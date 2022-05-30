@@ -1,4 +1,4 @@
-package jlu.evyde.gobang;
+package jlu.evyde.gobang.Client;
 
 public class Main {
     public static void main(String[] args) {
