@@ -2,6 +2,7 @@ package jlu.evyde.gobang.Client.SwingController;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatIntelliJLaf;
+import com.formdev.flatlaf.FlatLaf;
 import com.jthemedetecor.OsThemeDetector;
 import jlu.evyde.gobang.Client.Controller.Callback;
 import jlu.evyde.gobang.Client.Controller.GobangException;
@@ -13,10 +14,20 @@ import org.slf4j.LoggerFactory;
 import javax.swing.*;
 
 
+
 public class SwingUIDriver implements UIDriver {
-    private final OsThemeDetector detector = OsThemeDetector.getDetector();
+    private OsThemeDetector detector = null;
     private final JFrame mainFrame = new MainFrame();
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    public SwingUIDriver() {
+        try {
+            detector = OsThemeDetector.getDetector();
+        } catch (Exception e) {
+            logger.error("Disable auto dark mode.");
+            detector = (OsThemeDetector) (Object) new FakeDetector();
+        }
+    }
 
     /**
      * Returns if system is dark.
@@ -37,48 +48,55 @@ public class SwingUIDriver implements UIDriver {
     @Override
     public void initMainFrame(Callback callback) throws GobangException.FrameInitFailedException {
         detector.registerListener(isDark -> {
-            if (isDark) {
+            SwingUtilities.invokeLater(() -> {
+                if (isDark) {
+                    //The OS switched to a dark theme
+                    try {
+                        logger.warn("Switch theme to dark.");
+                        UIManager.setLookAndFeel(new FlatDarculaLaf());
+                    } catch (Exception ex) {
+                        logger.error("Failed to initialize LaF: {}.", ex.toString());
+                    }
+                } else {
+                    //The OS switched to a light theme
+                    try {
+                        logger.warn("Switch theme to light.");
+                        UIManager.setLookAndFeel(new FlatIntelliJLaf());
+                    } catch (Exception ex) {
+                        logger.error("Failed to initialize LaF: {}.", ex.toString());
+                    }
+                }
+                FlatLaf.updateUI();
+
+                // SwingUtilities.updateComponentTreeUI(mainFrame);
+            });
+        });
+
+        SwingUtilities.invokeLater(() -> {
+            if (detector.isDark()) {
                 //The OS switched to a dark theme
                 try {
-                    logger.warn("Switch theme to dark.");
+                    logger.warn("Using theme dark.");
                     UIManager.setLookAndFeel(new FlatDarculaLaf());
-                } catch(Exception ex) {
+                } catch (Exception ex) {
                     logger.error("Failed to initialize LaF: {}.", ex.toString());
+                    throw new GobangException.FrameInitFailedException();
                 }
             } else {
                 //The OS switched to a light theme
                 try {
-                    logger.warn("Switch theme to light.");
+                    logger.warn("Using theme light.");
                     UIManager.setLookAndFeel(new FlatIntelliJLaf());
-                } catch(Exception ex) {
+                } catch (Exception ex) {
                     logger.error("Failed to initialize LaF: {}.", ex.toString());
+                    throw new GobangException.FrameInitFailedException();
                 }
             }
-            SwingUtilities.updateComponentTreeUI(mainFrame);
+            FlatLaf.updateUI();
         });
 
-        if (detector.isDark()) {
-            //The OS switched to a dark theme
-            try {
-                logger.warn("Using theme dark.");
-                UIManager.setLookAndFeel(new FlatDarculaLaf());
-            } catch(Exception ex) {
-                logger.error("Failed to initialize LaF: {}.", ex.toString());
-                throw new GobangException.FrameInitFailedException();
-            }
-        } else {
-            //The OS switched to a light theme
-            try {
-                logger.warn("Using theme light.");
-                UIManager.setLookAndFeel(new FlatIntelliJLaf());
-            } catch(Exception ex) {
-                logger.error("Failed to initialize LaF: {}.", ex.toString());
-                throw new GobangException.FrameInitFailedException();
-            }
-        }
-        SwingUtilities.updateComponentTreeUI(mainFrame);
-
-        javax.swing.SwingUtilities.invokeLater(() -> mainFrame.setVisible(true));
+        // SwingUtilities.updateComponentTreeUI(mainFrame);
+        mainFrame.setVisible(true);
         // don't forget to callback
         callback.run();
     }
