@@ -9,7 +9,10 @@ import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 public class WebSocketMQServer implements MQBrokerServer {
@@ -17,12 +20,7 @@ public class WebSocketMQServer implements MQBrokerServer {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     // TODO: Change this to multiple kind of messages to cover MQ_Source for better performance.
-    // Obviously FIFO, use linked list as double ends queue.
-    private final Deque<MQMessage> messages = new LinkedList<>();
 
-    public Deque<MQMessage> getMessages() {
-        return messages;
-    }
 
     /**
      * Start message queue broker server in MQServerAddress.
@@ -67,9 +65,55 @@ public class WebSocketMQServer implements MQBrokerServer {
     private class RealWebSocketMQServer extends WebSocketServer {
         private static final Gson jsonParser = new Gson();
         private final Callback startComplete;
+        private WebSocket logicServer;
+        private HashSet<WebSocket> uis = new HashSet<>();
+        // Obviously FIFO, use linked list as double ends queue.
+        private final Deque<MQMessage> messages = new LinkedList<>();
+        private Deque<MQMessage> persistenceMessages = new LinkedList<>();
+
         public RealWebSocketMQServer(MQServerAddress msa, Callback startComplete) {
             super(msa.getIsa());
             this.startComplete = startComplete;
+        }
+
+        /**
+         * Broadcast message to UI or LogicServer automatically.
+         * @param m Message to broadcast.
+         * @return true if this message has consumer.
+         */
+        private boolean autoBroadcast(MQMessage m) {
+            if (SystemConfiguration.MQ_Source.UI.consume(m.from) && !uis.isEmpty()) {
+                boolean uiBroadcast = false;
+                for (WebSocket ws: uis) {
+                    if (ws.isClosed()) {
+                        uis.remove(ws);
+                    } else {
+                        ws.send(m.toJson());
+                        uiBroadcast = true;
+                    }
+                }
+                return uiBroadcast;
+            } else if (SystemConfiguration.MQ_Source.LOGIC.consume(m.from)
+                    && (logicServer != null || !uis.isEmpty())) {
+                // broadcast to all
+                boolean broadcast = false;
+                for (WebSocket ws: uis) {
+                    if (ws.isClosed()) {
+                        uis.remove(ws);
+                    } else {
+                        ws.send(m.toJson());
+                        broadcast = true;
+                    }
+                }
+                if (logicServer == null || logicServer.isClosed()) {
+                    logicServer = null;
+                } else {
+                    logicServer.send(m.toJson());
+                    broadcast = true;
+                }
+                return broadcast;
+            }
+            return false;
         }
 
         @Override
@@ -82,19 +126,35 @@ public class WebSocketMQServer implements MQBrokerServer {
 
         @Override
         public void onClose(WebSocket webSocket, int i, String s, boolean b) {
+            if (webSocket == logicServer) {
+                logger.warn("Logic server down.");
+                logicServer = null;
+            } else {
+                uis.remove(webSocket);
+            }
             logger.info("Websocket connection closed: {}", webSocket.getRemoteSocketAddress());
         }
 
         @Override
         public void onMessage(WebSocket webSocket, String s) {
+            if ((logicServer != null || !uis.isEmpty()) && !messages.isEmpty()) {
+                // clear message queue
+                logger.debug("Clearing message queue.");
+                while (!messages.isEmpty() && autoBroadcast(messages.peekFirst())) {
+                    messages.removeFirst();
+                }
+            }
             logger.debug(s);
             String[] splitMessage = s.split("\n");
 
+            // parse message content
             StringBuilder message = new StringBuilder();
             for (String i : splitMessage) {
                 if (SystemConfiguration.getMQMsgEnd().equals(i)
                         || SystemConfiguration.getMQProduceHead().equals(i)
-                        || SystemConfiguration.getMQConsumeHead().equals(i)) {
+                        || SystemConfiguration.getMQConsumeHead().equals(i)
+                        || SystemConfiguration.getMqRegisterHead().equals(i)
+                ) {
                     continue;
                 }
                 message.append(i);
@@ -106,15 +166,22 @@ public class WebSocketMQServer implements MQBrokerServer {
             } catch (Exception e) {
                 logger.warn("Invalid json.");
                 logger.debug(message.toString());
+                return;
             }
 
             logger.info("Incoming {} message from {}.", splitMessage[0], webSocket.getRemoteSocketAddress());
             if (SystemConfiguration.getMQProduceHead().equals(splitMessage[0])) {
 
                 if (j != null) {
-                    messages.addLast(j);
+                    if (!autoBroadcast(j)) {
+                        if (j.from != null) {
+                            messages.addLast(j);
+                        }
+                    }
                 }
+
             } else if (SystemConfiguration.getMQConsumeHead().equals(splitMessage[0])) {
+                // consume for this guy (debug and legacy tests only)
                 if (!messages.isEmpty()) {
                     try {
                         for (MQMessage m: messages) {
@@ -127,16 +194,22 @@ public class WebSocketMQServer implements MQBrokerServer {
                         logger.warn("Invalid consume content.");
                     }
                 }
-            } else if (SystemConfiguration.getMQGroupHead().equals(splitMessage[0])) {
+            } else if (SystemConfiguration.getMqRegisterHead().equals(splitMessage[0])) {
+                // Register
                 try {
-                    for (MQMessage m: messages) {
-                        if (m.from.consume(j.from)) {
-                            webSocket.send(jsonParser.toJson(m));
-                            messages.remove(m);
+                    if (j.from != null) {
+                        if (j.from == SystemConfiguration.MQ_Source.UI) {
+                            uis.add(webSocket);
+                        } else if (j.from == SystemConfiguration.MQ_Source.LOGIC) {
+                            if (logicServer == null || logicServer.isClosed()) {
+                                logicServer = webSocket;
+                            }
                         }
                     }
                 } catch (Exception e) {
-                    logger.warn("Invalid group content.");
+                    logger.warn("Register for {} websocket {} failed.",
+                            j.from,
+                            webSocket.getRemoteSocketAddress());
                 }
             }
         }

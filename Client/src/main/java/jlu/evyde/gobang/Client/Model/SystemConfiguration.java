@@ -9,12 +9,13 @@ public class SystemConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(SystemConfiguration.class);
     public static final Locale LOCALE = Locale.getDefault();
     private static final ResourceBundle bundle = ResourceBundle.getBundle("SystemConfiguration", LOCALE);
+    // TODO: Read and set these properties from file.
     private static final int MQ_SERVER_PORT = 8887;
     private static final String MQ_SERVER_HOST = "localhost";
     private static final String MQ_PRODUCE_HEAD = "PRODUCE";
     private static final String MQ_CONSUME_HEAD = "CONSUME";
     private static final String MQ_MSG_END = "END";
-    private static final String MQ_GROUP_HEAD = "GROUP";
+    private static final String MQ_REGISTER_HEAD = "REGISTER";
 
     public enum MQ_Source {
         UI {
@@ -68,6 +69,7 @@ public class SystemConfiguration {
         return MQ_SERVER_HOST;
     }
 
+    @Deprecated
     public static String getMQConsumeHead() {
         return MQ_CONSUME_HEAD;
     }
@@ -80,7 +82,7 @@ public class SystemConfiguration {
         return MQ_PRODUCE_HEAD;
     }
 
-    public static String getMQGroupHead() {
-        return MQ_GROUP_HEAD;
+    public static String getMqRegisterHead() {
+        return MQ_REGISTER_HEAD;
     }
 }
