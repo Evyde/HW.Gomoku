@@ -1,5 +1,8 @@
 # 五子棋
 
+[![Gobang Test CI](https://github.com/Evyde/hw.gobang/actions/workflows/GobangTestCI.yml/badge.svg)](https://github.com/Evyde/hw.gobang/actions/workflows/GobangTestCI.yml)
+
+
 对了，我又来写五子棋了（
 
 打算写一个前后端分离的五子棋游戏。
