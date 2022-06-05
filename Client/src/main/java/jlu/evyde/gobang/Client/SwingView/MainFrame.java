@@ -1,27 +1,38 @@
 package jlu.evyde.gobang.Client.SwingView;
+import jlu.evyde.gobang.Client.Controller.Callback;
+import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 import jlu.evyde.gobang.Client.SwingController.GUIPrintStream;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.PrintStream;
-import java.util.Locale;
 import java.util.ResourceBundle;
+
+import static java.lang.Thread.sleep;
 
 public class MainFrame extends JFrame {
     private JTextPane logTextPane;
     private final ResourceBundle bundle;
-    public MainFrame() {
+    private final Callback exit;
+    private final PrintStream stdout;
+    private final PrintStream stderr;
+    public MainFrame(Callback disposeListener) {
         super();
 
-        Locale locale = Locale.getDefault();
-        bundle = ResourceBundle.getBundle("MainFrame", locale);
+        // save source print stream
+        stdout = System.out;
+        stderr = System.err;
+
+        exit = disposeListener;
+
+        bundle = ResourceBundle.getBundle("MainFrame", SystemConfiguration.LOCALE);
 
         initComponents();
 
-        PrintStream stdout = new GUIPrintStream(System.out, logTextPane);
-        System.setOut(stdout);
-        PrintStream stderr = new GUIPrintStream(System.err, logTextPane);
-        System.setErr(stderr);
+        PrintStream out = new GUIPrintStream(System.out, logTextPane);
+        System.setOut(out);
+        PrintStream err = new GUIPrintStream(System.err, logTextPane);
+        System.setErr(err);
     }
 
     private void initComponents() {
@@ -31,7 +42,7 @@ public class MainFrame extends JFrame {
 
         JFrame.setDefaultLookAndFeelDecorated(true);
         this.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         GridBagLayout mainGridBagLayout = new GridBagLayout();
 
         mainGridBagLayout.columnWidths = new int[] { 0 };
@@ -101,4 +112,12 @@ public class MainFrame extends JFrame {
         this.pack();
     }
 
+    @Override
+    public void dispose() {
+        System.setOut(stdout);
+        System.setErr(stderr);
+
+        super.dispose();
+        exit.run();
+    }
 }
