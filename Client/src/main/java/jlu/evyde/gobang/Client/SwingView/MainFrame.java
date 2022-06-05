@@ -51,10 +51,14 @@ public class MainFrame extends JFrame {
         JScrollPane logScrollPane = new JScrollPane(
                 logTextPane,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
 
-        logScrollPane.setPreferredSize(new Dimension(100, 50));
+        logTextPane.setPreferredSize(new Dimension(50, 50));
+        logTextPane.setSize(new Dimension(50, 50));
+        logScrollPane.setPreferredSize(new Dimension(50, 50));
+        logScrollPane.setSize(new Dimension(50, 50));
+
         logScrollPane.setBorder(BorderFactory.createTitledBorder(bundle.getString("log")));
         s.gridx = 0;
         s.gridy = 3;
