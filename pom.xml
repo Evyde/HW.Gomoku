@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>jlu.evyde.gobang</groupId>
+    <artifactId>gobang</artifactId>
+    <packaging>pom</packaging>
+    <version>${revision}</version>
+    <description>
+        See https://github.com/Evyde/hw.gobang/README.md
+    </description>
+    <properties>
+        <!-- Sane default when no revision property is passed in from the command line -->
+        <revision>1.0.0-SNAPSHOT</revision>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+
+
+        <!--begin tags for by maven-scm-plugin -->
+        <!-- we use different names for tags and refs in order to avoid  refspec  matches more than one problem.-->
+        <tag>release-${project.version}</tag>
+        <branch>${project.version}</branch>
+        <!-- <pushChanges>false</pushChanges> uncomment if you don't want to push to git, e.g. when debugging your pipeline -->
+        <!--end tags for by maven-scm-plugin -->
+    </properties>
+
+    <modules>
+        <module>Client</module>
+        <module>Server</module>
+    </modules>
+
+    <scm>
+        <!-- <connection>scm:git:https://github.com/yilativs/maven-ci-friendly-multimodule-sample-project.git</connection> -->
+        <developerConnection>scm:git:ssh://git@github.com/Evyde/hw.gobang.git</developerConnection>
+        <url>https://github.com/Evyde/hw.gobang</url>
+    </scm>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-plugin</artifactId>
+                <version>1.13.0</version>
+                <configuration><!-- TODO find out why it is ignored -->
+                    <connectionType>developerConnection</connectionType>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.1.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
