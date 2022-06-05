@@ -22,6 +22,7 @@ public class GUIPrintStream extends PrintStream {
     private final JTextPane component;
 
     private final Color c;
+    private static volatile boolean locked;
 
     public GUIPrintStream(OutputStream out, JTextPane component) {
         super(out);
@@ -56,13 +57,18 @@ public class GUIPrintStream extends PrintStream {
     public void write(byte[] buf, int off, int len) {
         final String message = new String(buf, off, len);
 
+        while (locked) {
+            Thread.onSpinWait();
+        }
+        locked = true;
+        component.setEditable(true);
         if (component.getText().split("\n").length >= 100) {
             component.setText("");
-            component.setSize(new Dimension(100, 10));
         }
-        component.setEditable(true);
         appendToPane(component, message, c);
         component.setEditable(false);
+        component.setSize(new Dimension(50, 50));
+        locked = false;
     }
 }
 
