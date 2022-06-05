@@ -105,9 +105,10 @@ public class TestWebSocketMQServer {
 
         }
 
-        expected.add("{\"status\":\"ok\",\"code\":200,\"from\":\"" + SystemConfiguration.MQ_Source.LOGIC + "\",\"x\":0," +
+        expected.add("{\"status\":\"ok\",\"code\":200,\"from\":\"" + SystemConfiguration.MQ_Source.LOGIC.name() + "\"," +
+                "\"x\":0," +
                 "\"y\":0}");
-        expected.add("{\"status\":\"ok\",\"code\":200,\"from\":\"" + SystemConfiguration.MQ_Source.UI +
+        expected.add("{\"status\":\"ok\",\"code\":200,\"from\":\"" + SystemConfiguration.MQ_Source.UI.name() +
                 "\",\"x\":0,\"y\":0}");
         assertArrayEquals(expected.toArray(), actual.toArray());
 
@@ -179,7 +180,7 @@ public class TestWebSocketMQServer {
 
         }
 
-        int times = 1000;
+        int times = 100;
 
         while (times-- > 0) {
             int choice = Utils.generateRandomInt(0, 3);

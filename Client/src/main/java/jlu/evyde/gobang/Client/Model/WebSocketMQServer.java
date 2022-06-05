@@ -6,7 +6,6 @@ import jlu.evyde.gobang.Client.Controller.GobangException;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,7 @@ public class WebSocketMQServer implements MQBrokerServer {
     private class RealWebSocketMQServer extends WebSocketServer {
         private static final Gson jsonParser = new Gson();
         private final Callback startComplete;
-        public RealWebSocketMQServer(@NotNull MQServerAddress msa, @NotNull Callback startComplete) {
+        public RealWebSocketMQServer(MQServerAddress msa, Callback startComplete) {
             super(msa.getIsa());
             this.startComplete = startComplete;
         }
