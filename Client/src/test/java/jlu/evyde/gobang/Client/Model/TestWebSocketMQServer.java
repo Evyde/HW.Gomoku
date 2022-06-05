@@ -52,7 +52,7 @@ public class TestWebSocketMQServer {
         }
 
         // ui1 send, all will receive.
-        ui1.send(MQMessage.generateProduceMessage(SystemConfiguration.MQ_Source.UI));
+        ui1.send(MQMessage.generateProduceMessage(SystemConfiguration.MQ_Source.LOGIC));
         try {
             sleep(50);
         } catch (Exception e) {
