@@ -149,6 +149,11 @@ public class TestWebSocketMQServer {
                 }
                 uis.add(ui);
                 actualUIMessageList.put(ui, uil);
+                try {
+                    Util.sleep(50);
+                } catch (Exception e) {
+
+                }
             } else if (choice == 1) {
                 System.err.println("Produce from UI.");
                 // Produce from UI
