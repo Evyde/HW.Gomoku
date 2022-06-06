@@ -1,21 +1,34 @@
 package jlu.evyde.gobang.Client.SwingView;
 import jlu.evyde.gobang.Client.Controller.Callback;
+import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 import jlu.evyde.gobang.Client.SwingController.GUIPrintStream;
+import jlu.evyde.gobang.Client.View.GameFrame;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.Line2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ResourceBundle;
+import java.util.*;
 
 import static java.lang.Thread.sleep;
 
-public class MainFrame extends JFrame {
+public class MainFrame extends GameFrame {
     private JTextPane logTextPane;
     private final ResourceBundle bundle;
     private final Callback exit;
     private final PrintStream stdout;
     private final PrintStream stderr;
+    private JPanel game;
+    private Stack<MQProtocol.Chess> steps = new Stack<>();
+    private HashSet<Point> positions = new HashSet<>();
+    private final Logger logger = LoggerFactory.getLogger(MainFrame.class);
     public MainFrame(Callback disposeListener) {
         super();
 
@@ -65,10 +78,8 @@ public class MainFrame extends JFrame {
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
 
-        logTextPane.setPreferredSize(new Dimension(50, 50));
-        logTextPane.setSize(new Dimension(50, 50));
-        logScrollPane.setPreferredSize(new Dimension(50, 50));
-        logScrollPane.setSize(new Dimension(50, 50));
+        logTextPane.setPreferredSize(new Dimension(30, 30));
+        logScrollPane.setPreferredSize(new Dimension(30, 30));
 
         logScrollPane.setBorder(BorderFactory.createTitledBorder(bundle.getString("log")));
         s.gridx = 0;
@@ -92,8 +103,37 @@ public class MainFrame extends JFrame {
         this.add(controlPanel, s);
 
 
-        JPanel gamePanel = new JPanel();
+        JPanel gamePanel = new JPanel(new GridBagLayout());
         gamePanel.setBorder(BorderFactory.createTitledBorder(bundle.getString("gamePanel")));
+        game = new JPanel() {
+            private BufferedImage backgroundImage;
+            {
+                try {
+                    backgroundImage = ImageIO.read(new File("Client/src/main/resources/background.png"));
+                } catch (IOException ioe) {
+                    logger.error("Open image failed.");
+                }
+            }
+            @Override
+            public void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage,
+                        (getWidth() - backgroundImage.getWidth()) / 2,
+                        (getHeight() - backgroundImage.getHeight()) / 2,
+                        this
+                );
+            }
+        };
+
+        s = new GridBagConstraints();
+        s.gridx = 0;
+        s.gridy = 0;
+        s.fill = GridBagConstraints.BOTH;
+        s.weightx = 1;
+        s.weighty = 1;
+        s.ipadx = -10;
+        s.ipady = -10;
+        gamePanel.add(game, s);
 
         s = new GridBagConstraints();
         s.gridx = 1;
@@ -112,6 +152,15 @@ public class MainFrame extends JFrame {
         this.pack();
     }
 
+    public void dispose(Callback e) {
+        System.setOut(stdout);
+        System.setErr(stderr);
+
+        super.dispose();
+
+        e.run();
+    }
+
     @Override
     public void dispose() {
         System.setOut(stdout);
@@ -119,5 +168,29 @@ public class MainFrame extends JFrame {
 
         super.dispose();
         exit.run();
+    }
+
+    @Override
+    public void put(MQProtocol.Chess c) {
+        if (!positions.contains(c.getPosition())) {
+            this.positions.add(c.getPosition());
+            this.steps.push(c);
+            logger.warn("Put " + c);
+            game.repaint();
+        }
+    }
+
+    @Override
+    public void recall() {
+        if (!steps.isEmpty()) {
+            logger.warn("Recall");
+            this.positions.remove(steps.pop().getPosition());
+            game.repaint();
+        }
+    }
+
+    @Override
+    public void win(MQProtocol.Chess.Color c) {
+        logger.warn("{} wins!", c.toString());
     }
 }
