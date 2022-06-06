@@ -1,5 +1,6 @@
 package jlu.evyde.gobang.Client.Controller;
 
+import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 
 /**
@@ -34,7 +35,7 @@ public interface UIDriver {
      * @param y Relative axis of chess.
      * @param chess Kind of chess.
      */
-    void put(int x, int y, SystemConfiguration.Chess chess);
+    void put(int x, int y, MQProtocol.Chess chess);
 
     /**
      * Tell UI we win! :)

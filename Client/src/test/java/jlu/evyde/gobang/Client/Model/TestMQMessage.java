@@ -1,21 +1,26 @@
 package jlu.evyde.gobang.Client.Model;
 
 import org.junit.Test;
+
+import java.awt.*;
+
 import static org.junit.Assert.*;
 
 public class TestMQMessage {
     @Test
     public void normalJsonTest() {
         MQMessage mm = new MQMessage();
-        mm.status = "success";
+        mm.status = MQProtocol.Status.SUCCESS;
         mm.code = 200;
         mm.method = "plot";
-        mm.x = 3;
-        mm.y = 4;
-        mm.from = SystemConfiguration.MQ_Source.UI;
+        mm.chess = new MQProtocol.Chess(
+                new Point(3, 4),
+                MQProtocol.Chess.Color.BLACK
+        );
+        mm.from = MQProtocol.MQSource.UI;
 
         assertEquals("Normal JSON Test",
-                "{\"status\":\"success\",\"code\":200,\"method\":\"plot\",\"from\":\"UI\",\"x\":3,\"y\":4}",
+                "{\"status\":\"SUCCESS\",\"code\":200,\"method\":\"plot\",\"from\":\"UI\",\"chess\":{\"position\":{\"x\":3,\"y\":4},\"color\":\"BLACK\"}}",
                 mm.toString()
         );
     }
@@ -24,7 +29,7 @@ public class TestMQMessage {
     public void allNullJsonTest() {
         MQMessage mm = new MQMessage();
 
-        assertEquals("All null JSON test", "{\"code\":0,\"x\":0,\"y\":0}", mm.toString());
+        assertEquals("All null JSON test", "{}", mm.toString());
     }
 
     @Test
@@ -32,14 +37,13 @@ public class TestMQMessage {
         MQMessage mm;
 
         mm = MQMessage.fromJson(
-                "{\"status\":\"success\",\"code\":200,\"method\":\"plot\",\"x\":3,\"y\":4}"
+                "{\"status\":\"SUCCESS\",\"code\":200,\"method\":\"plot\",\"from\":\"UI\",\"chess\":{\"position\":{\"x\":3,\"y\":4},\"color\":\"BLACK\"}}"
         );
 
         assertNotNull(mm);
-        assertEquals("success", mm.status);
+        assertEquals(MQProtocol.Status.SUCCESS, mm.status);
         assertEquals("plot", mm.method);
-        assertEquals(200, mm.code);
-        assertEquals(3, mm.x);
-        assertEquals(4, mm.y);
+        assertEquals(Integer.valueOf(200), mm.code);
+        assertEquals(new MQProtocol.Chess(new Point(3, 4), MQProtocol.Chess.Color.BLACK), mm.chess);
     }
 }

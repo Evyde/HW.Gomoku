@@ -7,6 +7,7 @@ import com.jthemedetecor.OsThemeDetector;
 import jlu.evyde.gobang.Client.Controller.Callback;
 import jlu.evyde.gobang.Client.Controller.GobangException;
 import jlu.evyde.gobang.Client.Controller.UIDriver;
+import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 import jlu.evyde.gobang.Client.SwingView.MainFrame;
 import org.slf4j.Logger;
@@ -123,7 +124,7 @@ public class SwingUIDriver implements UIDriver {
      * @param chess Kind of chess.
      */
     @Override
-    public void put(int x, int y, SystemConfiguration.Chess chess) {
+    public void put(int x, int y, MQProtocol.Chess chess) {
 
     }
 

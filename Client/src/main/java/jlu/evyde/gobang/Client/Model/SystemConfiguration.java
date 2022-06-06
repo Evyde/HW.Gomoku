@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
 public class SystemConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(SystemConfiguration.class);
@@ -12,54 +13,7 @@ public class SystemConfiguration {
     // TODO: Read and set these properties from file.
     private static final int MQ_SERVER_PORT = 8887;
     private static final String MQ_SERVER_HOST = "localhost";
-    private static final String MQ_PRODUCE_HEAD = "PRODUCE";
-    private static final String MQ_CONSUME_HEAD = "CONSUME";
-    private static final String MQ_MSG_END = "END";
-    private static final String MQ_REGISTER_HEAD = "REGISTER";
-
-    public enum MQ_Source {
-        UI {
-            @Override
-            public boolean consume(MQ_Source ms) {
-                return ms == MQ_Source.LOGIC || ms == MQ_Source.UI;
-            }
-        },
-        CLIENT {
-            @Override
-            public boolean consume(MQ_Source ms) {
-                return ms == MQ_Source.SERVER;
-            }
-        },
-        SERVER {
-            @Override
-            public boolean consume(MQ_Source ms) {
-                return ms == MQ_Source.CLIENT;
-            }
-        },
-        LOGIC {
-            @Override
-            public boolean consume(MQ_Source ms) {
-                return ms == MQ_Source.UI;
-            }
-        },
-        ;
-        public abstract boolean consume(MQ_Source ms);
-
-        @Override
-        public String toString() {
-            return bundle.getString(this.name());
-        }
-    }
-
-    public enum Chess {
-        WHITE,
-        BLACK,;
-        @Override
-        public String toString() {
-            return bundle.getString(this.name());
-        }
-    }
-
+    private static final UUID INITIALIZED_UUID = UUID.nameUUIDFromBytes("Evyde HF 2022-06".getBytes());
 
     public static int getMQServerPort() {
         return MQ_SERVER_PORT;
@@ -69,20 +23,7 @@ public class SystemConfiguration {
         return MQ_SERVER_HOST;
     }
 
-    @Deprecated
-    public static String getMQConsumeHead() {
-        return MQ_CONSUME_HEAD;
-    }
-
-    public static String getMQMsgEnd() {
-        return MQ_MSG_END;
-    }
-
-    public static String getMQProduceHead() {
-        return MQ_PRODUCE_HEAD;
-    }
-
-    public static String getMqRegisterHead() {
-        return MQ_REGISTER_HEAD;
+    public static UUID getInitializedUuid() {
+        return INITIALIZED_UUID;
     }
 }

@@ -9,18 +9,14 @@ import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
+import static java.util.Collections.*;
+import java.util.*;
 
 public class WebSocketMQServer implements MQBrokerServer {
-    private WebSocketServer wss;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private WebSocketServer wss;
 
-    // TODO: Change this to multiple kind of messages to cover MQ_Source for better performance.
-
+    // TODO: Change this to multiple kind of messages to cover MQSource for better performance.
 
     /**
      * Start message queue broker server in MQServerAddress.
@@ -65,45 +61,89 @@ public class WebSocketMQServer implements MQBrokerServer {
     private class RealWebSocketMQServer extends WebSocketServer {
         private static final Gson jsonParser = new Gson();
         private final Callback startComplete;
-        private WebSocket logicServer;
-        private HashSet<WebSocket> uis = new HashSet<>();
         // Obviously FIFO, use linked list as double ends queue.
         private final Deque<MQMessage> messages = new LinkedList<>();
-        private Deque<MQMessage> persistenceMessages = new LinkedList<>();
+        private final Set<WebSocket> uis = Collections.synchronizedSet(new HashSet<>());
+        private final Deque<MQMessage> persistenceMessages = new LinkedList<>();
+        private final Map<WebSocket, UUID> uiUUIDTokens = Collections.synchronizedMap(new HashMap<>());
+        private WebSocket logicServer;
+        private UUID logicServerUUIDToken;
+        private boolean broadcastLock = false;
 
         public RealWebSocketMQServer(MQServerAddress msa, Callback startComplete) {
             super(msa.getIsa());
             this.startComplete = startComplete;
         }
 
+        private static String constructRegisterSuccessfulResponse(UUID token) {
+            MQMessage m = new MQMessage();
+            m.status = MQProtocol.Status.SUCCESS;
+            m.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
+            m.msg = "Update token";
+            m.from = MQProtocol.MQSource.SERVER;
+            m.token = token;
+            return m.toJson();
+        }
+
+        private static String constructRegisterFailedResponse(String msg) {
+            MQMessage m = new MQMessage();
+            m.msg = msg;
+            m.from = MQProtocol.MQSource.SERVER;
+            m.status = MQProtocol.Status.FAILED;
+            return m.toJson();
+        }
+
         /**
          * Broadcast message to UI or LogicServer automatically.
+         *
          * @param m Message to broadcast.
          * @return true if this message has consumer.
          */
         private boolean autoBroadcast(MQMessage m) {
+            if (broadcastLocked()) {
+                logger.warn("Broadcast locked.");
+                return false;
+            }
+            logger.info("Broadcast to all available consumers.");
             boolean broadcast = false;
-            if (SystemConfiguration.MQ_Source.UI.consume(m.from) && !uis.isEmpty()) {
-                for (WebSocket ws: uis) {
-                    if (ws.isClosed()) {
-                        uis.remove(ws);
-                    } else {
-                        ws.send(m.toJson());
-                        broadcast = true;
+            synchronized (uis) {
+                synchronized (uiUUIDTokens) {
+                    if (MQProtocol.MQSource.UI.consume(m.from) && !uis.isEmpty()) {
+                        for (WebSocket ws : uis) {
+                            if (ws == null || ws.isClosed()) {
+                                uis.remove(ws);
+                                uiUUIDTokens.remove(ws);
+                            } else {
+                                try {
+                                    ws.send(m.toJson());
+                                    broadcast = true;
+                                } catch (RuntimeException re) {
+                                    logger.warn("Unexpected client close.");
+                                    re.printStackTrace();
+                                }
+                            }
+                        }
+                        if (broadcast) {
+                            logger.debug("Broadcast to all UI successfully.");
+                        }
                     }
+                    if (MQProtocol.MQSource.LOGIC.consume(m.from)
+                            && (logicServer != null)) {
+                        // broadcast to logic
+                        if (logicServer.isClosed()) {
+                            logicServer = null;
+                        } else {
+                            logicServer.send(m.toJson());
+                            logger.debug("Broadcast to logic server successfully.");
+                            broadcast = true;
+                        }
+                    }
+                    if (!broadcast) {
+                        logger.warn("Broadcast called but nobody can talk.");
+                    }
+                    return broadcast;
                 }
             }
-            if (SystemConfiguration.MQ_Source.LOGIC.consume(m.from)
-                    && (logicServer != null)) {
-                // broadcast to logic
-                if (logicServer.isClosed()) {
-                    logicServer = null;
-                } else {
-                    logicServer.send(m.toJson());
-                    broadcast = true;
-                }
-            }
-            return broadcast;
         }
 
         @Override
@@ -127,32 +167,26 @@ public class WebSocketMQServer implements MQBrokerServer {
 
         @Override
         public void onMessage(WebSocket webSocket, String s) {
-            if ((logicServer != null || !uis.isEmpty()) && !messages.isEmpty()) {
-                // clear message queue
-                logger.debug("Clearing message queue.");
-                while (!messages.isEmpty() && autoBroadcast(messages.peekFirst())) {
-                    messages.removeFirst();
-                }
-            }
+            clearMessageQueue();
             logger.debug(s);
             String[] splitMessage = s.split("\n");
 
             // parse message content
             StringBuilder message = new StringBuilder();
             for (String i : splitMessage) {
-                if (SystemConfiguration.getMQMsgEnd().equals(i)
-                        || SystemConfiguration.getMQProduceHead().equals(i)
-                        || SystemConfiguration.getMQConsumeHead().equals(i)
-                        || SystemConfiguration.getMqRegisterHead().equals(i)
+                if (MQProtocol.Head.END.name().equals(i)
+                        || MQProtocol.Head.PRODUCE.name().equals(i)
+                        || MQProtocol.Head.CONSUME.name().equals(i)
+                        || MQProtocol.Head.REGISTER.name().equals(i)
                 ) {
                     continue;
                 }
                 message.append(i);
             }
             logger.debug(message.toString());
-            MQMessage j = null;
+            MQMessage incomingMQMessage;
             try {
-                j = jsonParser.fromJson(message.toString(), MQMessage.class);
+                incomingMQMessage = jsonParser.fromJson(message.toString(), MQMessage.class);
             } catch (Exception e) {
                 logger.warn("Invalid json.");
                 logger.debug(message.toString());
@@ -160,23 +194,31 @@ public class WebSocketMQServer implements MQBrokerServer {
             }
 
             logger.info("Incoming {} message from {}.", splitMessage[0], webSocket.getRemoteSocketAddress());
-            if (SystemConfiguration.getMQProduceHead().equals(splitMessage[0])) {
-
-                if (j != null) {
-                    if (!autoBroadcast(j)) {
-                        if (j.from != null) {
-                            messages.addLast(j);
+            if (MQProtocol.Head.PRODUCE.name().equals(splitMessage[0])) {
+                // produce
+                synchronized (uiUUIDTokens) {
+                    if (
+                            Objects.equals(uiUUIDTokens.get(webSocket), incomingMQMessage.token)
+                                    || Objects.equals(logicServerUUIDToken, incomingMQMessage.token)
+                    ) {
+                        if (!autoBroadcast(incomingMQMessage)) {
+                            if (incomingMQMessage.from != null) {
+                                messages.addLast(incomingMQMessage);
+                            }
+                        } else {
+                            persistenceMessages.addLast(incomingMQMessage);
                         }
+                    } else {
+                        logger.warn("Unauthorized behaviour!");
                     }
                 }
-
-            } else if (SystemConfiguration.getMQConsumeHead().equals(splitMessage[0])) {
+            } else if (MQProtocol.Head.CONSUME.name().equals(splitMessage[0])) {
                 // consume for this guy (debug and legacy tests only)
                 if (!messages.isEmpty()) {
                     try {
-                        for (MQMessage m: messages) {
-                            if (m.from.consume(j.from)) {
-                                webSocket.send(jsonParser.toJson(m));
+                        for (MQMessage m : messages) {
+                            if (m.from.consume(incomingMQMessage.from)) {
+                                webSocket.send(m.toJson());
                                 messages.remove(m);
                             }
                         }
@@ -184,23 +226,62 @@ public class WebSocketMQServer implements MQBrokerServer {
                         logger.warn("Invalid consume content.");
                     }
                 }
-            } else if (SystemConfiguration.getMqRegisterHead().equals(splitMessage[0])) {
+            } else if (MQProtocol.Head.REGISTER.name().equals(splitMessage[0])) {
                 // Register
+                // TODO: Could let token has expired time.
+                acquireBroadcastLock();
                 try {
-                    if (j.from != null) {
-                        if (j.from == SystemConfiguration.MQ_Source.UI) {
-                            uis.add(webSocket);
-                        } else if (j.from == SystemConfiguration.MQ_Source.LOGIC) {
-                            if (logicServer == null || logicServer.isClosed()) {
-                                logicServer = webSocket;
+                    // Check initialized token
+                    if (incomingMQMessage.token == null
+                            || !incomingMQMessage.token.equals(SystemConfiguration.getInitializedUuid())) {
+                        logger.warn("Unauthorized register!");
+                        webSocket.send(constructRegisterFailedResponse("Unauthorized register!"));
+                    } else {
+                        // generate random token
+                        UUID randomToken = UUID.randomUUID();
+                        if (incomingMQMessage.from != null) {
+                            if (incomingMQMessage.from == MQProtocol.MQSource.UI) {
+                                synchronized (uis) {
+                                    uis.add(webSocket);
+                                }
+                                synchronized (uiUUIDTokens) {
+                                    uiUUIDTokens.put(webSocket, randomToken);
+                                }
+                                // TODO: Change this to flexible way
+                                webSocket.send(constructRegisterSuccessfulResponse(randomToken));
+
+                                // send all history for reconnect
+                                if (!persistenceMessages.isEmpty()) {
+                                    for (MQMessage m : persistenceMessages) {
+                                        webSocket.send(m.toJson());
+                                    }
+                                }
+                            } else if (incomingMQMessage.from == MQProtocol.MQSource.LOGIC) {
+                                if (logicServer == null || logicServer.isClosed()) {
+                                    logicServer = webSocket;
+                                    logicServerUUIDToken = randomToken;
+                                    webSocket.send(constructRegisterSuccessfulResponse(randomToken));
+
+                                    // send all history for reconnection
+                                    if (!persistenceMessages.isEmpty()) {
+                                        for (MQMessage m : persistenceMessages) {
+                                            if (m.from != MQProtocol.MQSource.LOGIC) {
+                                                webSocket.send(m.toJson());
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                    releaseBroadcastLock();
                 } catch (Exception e) {
                     logger.warn("Register for {} websocket {} failed.",
-                            j.from,
+                            incomingMQMessage.from,
                             webSocket.getRemoteSocketAddress());
+                    releaseBroadcastLock();
                 }
+                releaseBroadcastLock();
             }
         }
 
@@ -216,6 +297,29 @@ public class WebSocketMQServer implements MQBrokerServer {
         @Override
         public void onStart() {
             startComplete.run();
+        }
+
+        private void acquireBroadcastLock() {
+            broadcastLock = true;
+        }
+
+        private void releaseBroadcastLock() {
+            broadcastLock = false;
+            clearMessageQueue();
+        }
+
+        private boolean broadcastLocked() {
+            return broadcastLock;
+        }
+
+        private void clearMessageQueue() {
+            if ((logicServer != null || !uis.isEmpty()) && !messages.isEmpty()) {
+                // clear message queue
+                logger.debug("Clearing message queue.");
+                while (!messages.isEmpty() && autoBroadcast(messages.peekFirst())) {
+                    persistenceMessages.addLast(messages.removeFirst());
+                }
+            }
         }
     }
 }
