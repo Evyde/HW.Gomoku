@@ -2,11 +2,9 @@ package jlu.evyde.gobang.Client;
 
 import jlu.evyde.gobang.Client.Controller.Callback;
 import jlu.evyde.gobang.Client.Controller.GobangException;
+import jlu.evyde.gobang.Client.Controller.UIDriver;
 import jlu.evyde.gobang.Client.Controller.UIDriverFactory;
-import jlu.evyde.gobang.Client.Model.MQBrokerServer;
-import jlu.evyde.gobang.Client.Model.MQBrokerServerFactory;
-import jlu.evyde.gobang.Client.Model.MQServerAddress;
-import jlu.evyde.gobang.Client.Model.SystemConfiguration;
+import jlu.evyde.gobang.Client.Model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,10 +15,13 @@ import static java.lang.Thread.sleep;
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
     private static MQBrokerServer mqBrokerServer;
+    private static final UIDriver uid = UIDriverFactory.getSwingUIDriver();
+    private static LogicServer ls;
+    private static volatile boolean stageLock = true;
 
-    private static void init() {
+    private static void initMainFrame() {
         try {
-            UIDriverFactory.getUIDriver().initMainFrame(
+            uid.initMainFrame(
                     () -> {
                         logger.info("MainFrame started.");
                     },
@@ -30,9 +31,9 @@ public class Main {
             logger.error("MainFrame started failed: {}", ffe.toString());
             System.exit(1);
         }
+    }
 
-
-
+    private static void initMQServer() {
         try {
             MQServerAddress msa = new MQServerAddress();
             msa.setIsa(new InetSocketAddress(SystemConfiguration.getMQServerHost(),
@@ -42,15 +43,21 @@ public class Main {
                     msa,
                     () -> {
                         logger.info("Message queue server started.");
+                        stageLock = false;
                     },
                     () -> {
-
+                        logger.error("Message queue server start failed, exit.");
+                        System.exit(2);
                     }
             );
         } catch (GobangException.MQServerStartFailedException e) {
             logger.error("Message queue server started or connected failed, exit.");
-            System.exit(2);
+            System.exit(3);
         }
+    }
+
+    private static void initLogicServer() {
+        ls = new LogicServer(uid);
     }
 
     private static class dispose implements Callback {
@@ -60,15 +67,29 @@ public class Main {
         public void run() {
             logger.warn("Exiting.");
 
-            mqBrokerServer.closeMQBrokerServer(
-                    () -> { logger.info("Closing MQ server."); },
-                    () -> {
-                        logger.info("MQ server closed.");
+            try {
+
+                mqBrokerServer.closeMQBrokerServer(
+                        () -> {
+                            logger.info("Closing MQ server.");
+                        },
+                        () -> {
+                            logger.info("MQ server closed.");
+                            locked = false;
+                        }
+                );
+                Integer counter = SystemConfiguration.getMaxRetryTime();
+                while (locked) {
+                    if (counter-- <= 0) {
                         locked = false;
+                        sleep(SystemConfiguration.getSleepTime());
                     }
-            );
-            while (locked) {
-                Thread.onSpinWait();
+                    Thread.onSpinWait();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("Failed to exit, exit anyway.");
+                System.exit(4);
             }
 
             System.exit(0);
@@ -76,7 +97,35 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        logger.warn("Starting client.");
-        init();
+        logger.info("Starting client.");
+        logger.warn("Stage 1: Initialize main frame.");
+        initMainFrame();
+        logger.warn("Stage 2: Initialize message queue server.");
+        initMQServer();
+        while (stageLock) {
+            Thread.onSpinWait();
+        }
+        logger.warn("Stage 3: Initialize logic server.");
+        initLogicServer();
+        logger.warn("Stage 4: Initialize UI server.");
+        initUIServer();
+        logger.warn("Initialized successfully.");
+    }
+
+    private static void initUIServer() {
+        stageLock = true;
+        uid.initCommunicator(() -> { stageLock = false; });
+        try {
+            Integer counter = SystemConfiguration.getMaxRetryTime();
+            while (stageLock) {
+                if (counter-- <= 0) {
+                    logger.error("Could not start UI server.");
+                }
+                sleep(SystemConfiguration.getSleepTime());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("UI server may start failed.");
+        }
     }
 }
