@@ -21,7 +21,7 @@ public class SystemConfiguration {
         UI {
             @Override
             public boolean consume(MQ_Source ms) {
-                return ms == MQ_Source.LOGIC;
+                return ms == MQ_Source.LOGIC || ms == MQ_Source.UI;
             }
         },
         CLIENT {

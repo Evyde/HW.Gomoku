@@ -52,7 +52,7 @@ public class TestWebSocketMQServer {
         }
 
         // ui1 send, all will receive.
-        ui1.send(MQMessage.generateProduceMessage(SystemConfiguration.MQ_Source.LOGIC));
+        ui1.send(MQMessage.generateProduceMessage(SystemConfiguration.MQ_Source.UI));
         try {
             sleep(50);
         } catch (Exception e) {
@@ -72,7 +72,7 @@ public class TestWebSocketMQServer {
         assertEquals(ui2List.get(1), logicList.get(1));
 
         // logic send, except for logic, all will receive
-        logic.send(MQMessage.generateProduceMessage(SystemConfiguration.MQ_Source.UI));
+        logic.send(MQMessage.generateProduceMessage(SystemConfiguration.MQ_Source.LOGIC));
         try {
             sleep(50);
         } catch (Exception e) {

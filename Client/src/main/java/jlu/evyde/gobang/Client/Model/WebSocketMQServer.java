@@ -82,21 +82,8 @@ public class WebSocketMQServer implements MQBrokerServer {
          * @return true if this message has consumer.
          */
         private boolean autoBroadcast(MQMessage m) {
+            boolean broadcast = false;
             if (SystemConfiguration.MQ_Source.UI.consume(m.from) && !uis.isEmpty()) {
-                boolean uiBroadcast = false;
-                for (WebSocket ws: uis) {
-                    if (ws.isClosed()) {
-                        uis.remove(ws);
-                    } else {
-                        ws.send(m.toJson());
-                        uiBroadcast = true;
-                    }
-                }
-                return uiBroadcast;
-            } else if (SystemConfiguration.MQ_Source.LOGIC.consume(m.from)
-                    && (logicServer != null || !uis.isEmpty())) {
-                // broadcast to all
-                boolean broadcast = false;
                 for (WebSocket ws: uis) {
                     if (ws.isClosed()) {
                         uis.remove(ws);
@@ -105,15 +92,18 @@ public class WebSocketMQServer implements MQBrokerServer {
                         broadcast = true;
                     }
                 }
-                if (logicServer == null || logicServer.isClosed()) {
+            }
+            if (SystemConfiguration.MQ_Source.LOGIC.consume(m.from)
+                    && (logicServer != null)) {
+                // broadcast to logic
+                if (logicServer.isClosed()) {
                     logicServer = null;
                 } else {
                     logicServer.send(m.toJson());
                     broadcast = true;
                 }
-                return broadcast;
             }
-            return false;
+            return broadcast;
         }
 
         @Override
