@@ -13,11 +13,11 @@
 
 ## 现阶段截图
 
-![五子棋界面截图/夜间模式](pics/ScreenShot0701.png)
+![五子棋界面截图/夜间模式](pics/ScreenShot0601.png)
 
-![五子棋界面截图/日间模式](pics/ScreenShot0702.png)
+![五子棋界面截图/日间模式](pics/ScreenShot0602.png)
 
-![控制台截图](pics/ScreenShot0703.png)
+![控制台截图](pics/ScreenShot0603.png)
 
 ## 功能
 
