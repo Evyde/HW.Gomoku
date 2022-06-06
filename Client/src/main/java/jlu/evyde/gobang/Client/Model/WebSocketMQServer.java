@@ -9,7 +9,6 @@ import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.util.Collections.*;
 import java.util.*;
 
 public class WebSocketMQServer implements MQBrokerServer {
@@ -108,7 +107,7 @@ public class WebSocketMQServer implements MQBrokerServer {
             boolean broadcast = false;
             synchronized (uis) {
                 synchronized (uiUUIDTokens) {
-                    if (MQProtocol.MQSource.UI.consume(m.from) && !uis.isEmpty()) {
+                    if (MQProtocol.MQSource.UI.canConsume(m.from) && !uis.isEmpty()) {
                         for (WebSocket ws : uis) {
                             if (ws == null || ws.isClosed()) {
                                 uis.remove(ws);
@@ -127,7 +126,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                             logger.debug("Broadcast to all UI successfully.");
                         }
                     }
-                    if (MQProtocol.MQSource.LOGIC.consume(m.from)
+                    if (MQProtocol.MQSource.LOGIC.canConsume(m.from)
                             && (logicServer != null)) {
                         // broadcast to logic
                         if (logicServer.isClosed()) {
@@ -160,7 +159,12 @@ public class WebSocketMQServer implements MQBrokerServer {
                 logger.warn("Logic server down.");
                 logicServer = null;
             } else {
-                uis.remove(webSocket);
+                synchronized (uis) {
+                    uis.remove(webSocket);
+                }
+                synchronized (uiUUIDTokens) {
+                    uiUUIDTokens.remove(webSocket);
+                }
             }
             logger.info("Websocket connection closed: {}", webSocket.getRemoteSocketAddress());
         }
@@ -217,7 +221,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                 if (!messages.isEmpty()) {
                     try {
                         for (MQMessage m : messages) {
-                            if (m.from.consume(incomingMQMessage.from)) {
+                            if (m.from.canConsume(incomingMQMessage.from)) {
                                 webSocket.send(m.toJson());
                                 messages.remove(m);
                             }

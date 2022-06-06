@@ -1,10 +1,12 @@
 package jlu.evyde.gobang.Client.Model;
 
 import java.awt.*;
-import java.awt.geom.Dimension2D;
 import java.io.Serializable;
 import java.util.ResourceBundle;
 
+/**
+ * Protocol definition class.
+ */
 public class MQProtocol {
     private static final ResourceBundle bundle = ResourceBundle.getBundle("MQProtocol");
     public enum Head {
@@ -29,11 +31,15 @@ public class MQProtocol {
 
     public enum Code {
         UPDATE_TOKEN(100),
+        PUT_CHESS(101),
+        RECALL(102),
+        WHITE_WIN(103),
+        BLACK_WIN(104),
         ;
         private final Integer code;
 
         Code(Integer c) {
-            this.code = 200;
+            this.code = c;
         }
 
         public Integer getCode() {
@@ -44,30 +50,30 @@ public class MQProtocol {
     public enum MQSource {
         UI {
             @Override
-            public boolean consume(MQSource ms) {
+            public boolean canConsume(MQSource ms) {
                 return ms == MQSource.LOGIC || ms == MQSource.UI;
             }
         },
         CLIENT {
             @Override
-            public boolean consume(MQSource ms) {
+            public boolean canConsume(MQSource ms) {
                 return ms == MQSource.SERVER;
             }
         },
         SERVER {
             @Override
-            public boolean consume(MQSource ms) {
+            public boolean canConsume(MQSource ms) {
                 return ms == MQSource.CLIENT;
             }
         },
         LOGIC {
             @Override
-            public boolean consume(MQSource ms) {
+            public boolean canConsume(MQSource ms) {
                 return ms == MQSource.UI;
             }
         },
         ;
-        public abstract boolean consume(MQSource ms);
+        public abstract boolean canConsume(MQSource ms);
 
         @Override
         public String toString() {
@@ -92,6 +98,10 @@ public class MQProtocol {
         public Chess(Point position, Color color) {
             this.position = position;
             this.color = color;
+        }
+
+        public Color getColor() {
+            return color;
         }
 
         @Override

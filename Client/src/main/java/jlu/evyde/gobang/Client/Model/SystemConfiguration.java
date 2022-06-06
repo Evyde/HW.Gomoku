@@ -14,6 +14,8 @@ public class SystemConfiguration {
     private static final int MQ_SERVER_PORT = 8887;
     private static final String MQ_SERVER_HOST = "localhost";
     private static final UUID INITIALIZED_UUID = UUID.nameUUIDFromBytes("Evyde HF 2022-06".getBytes());
+    private static final Integer MAX_RETRY_TIME = 5;
+    private static final Integer SLEEP_TIME = 200;
 
     public static int getMQServerPort() {
         return MQ_SERVER_PORT;
@@ -25,5 +27,13 @@ public class SystemConfiguration {
 
     public static UUID getInitializedUuid() {
         return INITIALIZED_UUID;
+    }
+
+    public static Integer getMaxRetryTime() {
+        return MAX_RETRY_TIME;
+    }
+
+    public static Integer getSleepTime() {
+        return SLEEP_TIME;
     }
 }
