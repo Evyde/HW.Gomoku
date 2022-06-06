@@ -4,23 +4,25 @@ import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatIntelliJLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.jthemedetecor.OsThemeDetector;
-import jlu.evyde.gobang.Client.Controller.Callback;
-import jlu.evyde.gobang.Client.Controller.GobangException;
-import jlu.evyde.gobang.Client.Controller.UIDriver;
+import jlu.evyde.gobang.Client.Controller.*;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
+import jlu.evyde.gobang.Client.Model.MQServerAddress;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 import jlu.evyde.gobang.Client.SwingView.MainFrame;
+import jlu.evyde.gobang.Client.View.GameFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 
+import static java.lang.Thread.sleep;
 
 
 public class SwingUIDriver implements UIDriver {
     private OsThemeDetector detector = null;
-    private JFrame mainFrame;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private Communicator communicator;
+    private GameFrame gameFrame;
 
     public SwingUIDriver() {
         try {
@@ -49,7 +51,7 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void initMainFrame(Callback complete, Callback disposeListener) throws GobangException.FrameInitFailedException {
-        mainFrame = new MainFrame(disposeListener);
+        gameFrame = new MainFrame(disposeListener);
         detector.registerListener(isDark -> {
             SwingUtilities.invokeLater(() -> {
                 if (isDark) {
@@ -99,7 +101,7 @@ public class SwingUIDriver implements UIDriver {
         });
 
         // SwingUtilities.updateComponentTreeUI(mainFrame);
-        mainFrame.setVisible(true);
+        gameFrame.setVisible(true);
         // don't forget to callback
         complete.run();
     }
@@ -108,39 +110,68 @@ public class SwingUIDriver implements UIDriver {
      * Initialize the communicator for UI, should persistence it properly.
      *
      * @param complete Callback function when successfully initialized.
-     * @throws GobangException.UICommunicatorInitFailedException
+     * @throws GobangException.CommunicatorInitFailedException
      */
     @Override
-    public void initUICommunicator(Callback complete) throws GobangException.UICommunicatorInitFailedException {
+    public void initCommunicator(Callback complete) throws GobangException.CommunicatorInitFailedException {
+        try {
+            communicator = CommunicatorFactory.getWebSocketCommunicator();
+            communicator.addReceiveListener(new UICommunicatorReceiveListener(this) {
+                @Override
+                public void beforeReceive() {
+                    logger.info("Received message.");
+                }
 
+                @Override
+                public void afterReceive() {
+                    logger.info("Receive complete.");
+                }
+            });
+            communicator.connect(new MQServerAddress());
+            Integer counter = SystemConfiguration.getMaxRetryTime();
+            while (!communicator.connected()) {
+                if (counter-- <= 0) {
+                    logger.error("Could not connect.");
+                }
+                sleep(SystemConfiguration.getSleepTime());
+            }
+            communicator.register(MQProtocol.MQSource.UI, complete, () -> {
+                logger.error("Register to MQ failed.");
+                throw new GobangException.UICommunicatorInitFailedException();
+            });
+        } catch (Exception e) {
+            logger.error("Failed to initialize communicator.");
+            e.printStackTrace();
+            throw new GobangException.UICommunicatorInitFailedException();
+        }
     }
-
 
     /**
      * Put chess in the UI.
      *
-     * @param x     Relative axis of chess.
-     * @param y     Relative axis of chess.
-     * @param chess Kind of chess.
+     * @param chess Chess (with position and kind).
      */
     @Override
-    public void put(int x, int y, MQProtocol.Chess chess) {
-
+    public void put(MQProtocol.Chess chess) {
+        gameFrame.put(chess);
     }
 
     /**
-     * Tell UI we win! :)
+     * Tell UI which color of chess wins.
+     *
+     * @param color Color of chess who win.
      */
     @Override
-    public void win() {
-
+    public void win(MQProtocol.Chess.Color color) {
+        gameFrame.win(color);
     }
 
     /**
-     * Tell UI we lose. :(
+     * Recall last step.
      */
     @Override
-    public void lose() {
-
+    public void recall() {
+        gameFrame.recall();
     }
+
 }

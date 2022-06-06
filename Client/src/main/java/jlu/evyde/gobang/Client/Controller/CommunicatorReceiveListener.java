@@ -1,8 +1,9 @@
 package jlu.evyde.gobang.Client.Controller;
 
-import com.google.gson.Gson;
+import jlu.evyde.gobang.Client.Model.MQMessage;
 
 public interface CommunicatorReceiveListener {
     void beforeReceive();
-    void afterReceive(Gson receivedJson);
+    void doReceive(MQMessage msg);
+    void afterReceive();
 }

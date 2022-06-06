@@ -1,7 +1,6 @@
 package jlu.evyde.gobang.Client.Controller;
 
 import jlu.evyde.gobang.Client.Model.MQProtocol;
-import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 
 /**
  * @author evyde
@@ -25,25 +24,24 @@ public interface UIDriver {
     /**
      * Initialize the communicator for UI, should persistence it properly.
      * @param complete Callback function when successfully initialized.
-     * @throws GobangException.UICommunicatorInitFailedException
+     * @throws GobangException.CommunicatorInitFailedException
      */
-    void initUICommunicator(Callback complete) throws GobangException.UICommunicatorInitFailedException;
+    void initCommunicator(Callback complete) throws GobangException.CommunicatorInitFailedException;
 
     /**
      * Put chess in the UI.
-     * @param x Relative axis of chess.
-     * @param y Relative axis of chess.
-     * @param chess Kind of chess.
+     * @param chess Chess (with position and kind).
      */
-    void put(int x, int y, MQProtocol.Chess chess);
+    void put(MQProtocol.Chess chess);
 
     /**
-     * Tell UI we win! :)
+     * Tell UI which color of chess wins.
+     * @param color Color of chess who win.
      */
-    void win();
+    void win(MQProtocol.Chess.Color color);
 
     /**
-     * Tell UI we lose. :(
+     * Recall last step.
      */
-    void lose();
+    void recall();
 }

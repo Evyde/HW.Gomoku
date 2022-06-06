@@ -14,8 +14,8 @@ import javax.swing.text.*;
  * 输出到文本组件的流。
  *
  * @author Chen Wei
- * @website  www.chenwei.mobi
- * @email  chenweionline@hotmail.com
+ * &#064;website   www.chenwei.mobi
+ * &#064;email   chenweionline@hotmail.com
  */
 public class GUIPrintStream extends PrintStream {
 
@@ -38,19 +38,28 @@ public class GUIPrintStream extends PrintStream {
     }
 
     /**
-     * @source <a href="https://stackoverflow.com/questions/9650992/how-to-change-text-color-in-the-jtextarea">...</a>
+     * &#064;source  <a href="https://stackoverflow.com/questions/9650992/how-to-change-text-color-in-the-jtextarea">...</a>
      */
     private void appendToPane(JTextPane tp, String msg, Color c) {
         StyleContext sc = StyleContext.getDefaultStyleContext();
         AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
 
-        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
-        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
-
         int len = tp.getDocument().getLength();
         tp.setCaretPosition(len);
         tp.setCharacterAttributes(aset, false);
         tp.replaceSelection(msg);
+    }
+
+    /**
+     * &#064;source  <a href="https://stackoverflow.com/questions/9650992/how-to-change-text-color-in-the-jtextarea">...</a>
+     */
+    private void print(JTextPane tp, String msg, Color c) {
+        AttributeSet attributes = StyleContext.getDefaultStyleContext()
+                .addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+
+        try {
+            tp.getStyledDocument().insertString(tp.getDocument().getLength(), msg, attributes);
+        } catch (BadLocationException ignored) { }
     }
 
     @Override
@@ -65,9 +74,8 @@ public class GUIPrintStream extends PrintStream {
         if (component.getText().split("\n").length >= 100) {
             component.setText("");
         }
-        appendToPane(component, message, c);
+        print(component, message, c);
         component.setEditable(false);
-        component.setSize(new Dimension(50, 50));
         locked = false;
     }
 }
