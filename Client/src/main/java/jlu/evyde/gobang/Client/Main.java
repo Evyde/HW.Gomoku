@@ -98,23 +98,27 @@ public class Main {
 
     public static void main(String[] args) {
         logger.info("Starting client.");
-        logger.warn("Stage 1: Initialize main frame.");
-        initMainFrame();
-        logger.warn("Stage 2: Initialize message queue server.");
+
+        logger.warn("Stage 1: Initialize message queue server.");
         initMQServer();
         while (stageLock) {
             Thread.onSpinWait();
         }
-        logger.warn("Stage 3: Initialize logic server.");
+        logger.warn("Stage 2: Initialize logic server.");
         initLogicServer();
-        logger.warn("Stage 4: Initialize UI server.");
+        logger.warn("Stage 3: Initialize UI server.");
         initUIServer();
+        logger.warn("Stage 4: Initialize main frame.");
+        initMainFrame();
         logger.warn("Initialized successfully.");
     }
 
     private static void initUIServer() {
         stageLock = true;
-        uid.initCommunicator(() -> { stageLock = false; });
+        uid.initCommunicator(() -> {
+            stageLock = false;
+            logger.info("UI server started.");
+        });
         try {
             Integer counter = SystemConfiguration.getMaxRetryTime();
             while (stageLock) {
