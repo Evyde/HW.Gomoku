@@ -7,6 +7,7 @@ import java.util.ResourceBundle;
 /**
  * Protocol definition class.
  */
+// TODO: Add role (WATCHER, WHITE_PUTTER, BLACK_PUTTER)
 public class MQProtocol {
     private static final ResourceBundle bundle = ResourceBundle.getBundle("MQProtocol");
     public enum Head {

@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+// TODO: Every Produce Message from UI show push to logic server first, then let logic server broadcast to all UIs,
+//      to prevent wrong put action to a same position (Also should judge by UI).
+//      Simple check to prevent fake PRODUCE request from WATCHER (check PUTTERs' token).
 public class WebSocketMQServer implements MQBrokerServer {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private WebSocketServer wss;

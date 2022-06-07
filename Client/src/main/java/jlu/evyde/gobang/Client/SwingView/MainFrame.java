@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.Line2D;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -28,11 +28,12 @@ public class MainFrame extends GameFrame {
     private final PrintStream stderr;
     private JPanel game;
     private Stack<MQProtocol.Chess> steps = new Stack<>();
-    private HashSet<Point> positions = new HashSet<>();
+    private HashSet<Point> relativePositions = new HashSet<>();
+    private HashSet<Point> absolutePositions = new HashSet<>();
     private final Logger logger = LoggerFactory.getLogger(MainFrame.class);
     private Communicator communicator;
     public MainFrame(Callback disposeListener, Communicator uiCommunicator) {
-        super();
+        super(uiCommunicator);
 
         this.communicator = uiCommunicator;
         // save source print stream
@@ -148,10 +149,20 @@ public class MainFrame extends GameFrame {
         s.weightx = 2;
         s.weighty = 1;
         this.add(gamePanel, s);
+        game.addMouseListener(new PutChessListener() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (!absolutePositions.contains(e.getPoint())) {
+                    super.mouseClicked(e);
+                }
+            }
+        });
+        game.addMouseMotionListener(new HoverChessListener() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
 
-
-
-
+            }
+        });
         this.pack();
     }
 
@@ -175,8 +186,9 @@ public class MainFrame extends GameFrame {
 
     @Override
     public void put(MQProtocol.Chess c) {
-        if (!positions.contains(c.getPosition())) {
-            this.positions.add(c.getPosition());
+        if (!relativePositions.contains(c.getPosition())) {
+            this.relativePositions.add(c.getPosition());
+            this.absolutePositions.add(toAbsolutePosition(c.getPosition()));
             this.steps.push(c);
             logger.warn("Put " + c);
             game.repaint();
@@ -187,7 +199,8 @@ public class MainFrame extends GameFrame {
     public void recall() {
         if (!steps.isEmpty()) {
             logger.warn("Recall");
-            this.positions.remove(steps.pop().getPosition());
+            this.relativePositions.remove(steps.pop().getPosition());
+            this.absolutePositions.remove(toAbsolutePosition(steps.pop().getPosition()));
             game.repaint();
         }
     }
@@ -195,5 +208,15 @@ public class MainFrame extends GameFrame {
     @Override
     public void win(MQProtocol.Chess.Color c) {
         logger.warn("{} wins!", c.toString());
+    }
+
+    @Override
+    public Point toRelativePosition(Point point) {
+        return point;
+    }
+
+    @Override
+    public Point toAbsolutePosition(Point point) {
+        return null;
     }
 }
