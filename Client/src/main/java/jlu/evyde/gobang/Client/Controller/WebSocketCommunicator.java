@@ -16,7 +16,7 @@ import static java.lang.Thread.sleep;
 
 public class WebSocketCommunicator implements Communicator {
     private RealWebSocketCommunicator wsc;
-    private MQProtocol.MQSource id;
+    private MQProtocol.Group id;
     private CommunicatorReceiveListener listener;
     private final Logger logger = LoggerFactory.getLogger(WebSocketCommunicator.class);
     private UUID communicatorToken = null;
@@ -56,7 +56,7 @@ public class WebSocketCommunicator implements Communicator {
      * @param failed  Callback function when registered failed.
      */
     @Override
-    public void register(MQProtocol.MQSource id, Callback success, Callback failed) {
+    public void register(MQProtocol.Group id, Callback success, Callback failed) {
         this.id = id;
         if (SystemConfiguration.getMaxRetryTime().equals(this.triedTimes)) {
             failed.run();
@@ -117,7 +117,7 @@ public class WebSocketCommunicator implements Communicator {
     @Override
     public void put(MQProtocol.Chess chess) {
         MQMessage put = new MQMessage();
-        put.from = id;
+        put.group = id;
         put.chess = chess;
         put.status = MQProtocol.Status.SUCCESS;
         put.code = MQProtocol.Code.PUT_CHESS.getCode();
@@ -133,7 +133,7 @@ public class WebSocketCommunicator implements Communicator {
         MQMessage recall = new MQMessage();
         recall.code = MQProtocol.Code.RECALL.getCode();
         recall.status = MQProtocol.Status.SUCCESS;
-        recall.from = id;
+        recall.group = id;
         recall.chess = new MQProtocol.Chess(new Point(), MQProtocol.Chess.Color.WHITE);
         produce(recall, () -> { logger.info("Recall."); }, () -> { logger.warn("Recall failed."); });
     }
@@ -146,7 +146,7 @@ public class WebSocketCommunicator implements Communicator {
     @Override
     public void win(MQProtocol.Chess.Color color) {
         MQMessage win = new MQMessage();
-        win.from = id;
+        win.group = id;
         win.chess = new MQProtocol.Chess(new Point(), color);
         win.status = MQProtocol.Status.SUCCESS;
         win.code = color == MQProtocol.Chess.Color.WHITE?
@@ -189,8 +189,9 @@ public class WebSocketCommunicator implements Communicator {
                 return;
             }
             assert m != null;
+            // TODO: Return register failed message.
             if ((communicatorToken == null || MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code))
-                    && m.from == MQProtocol.MQSource.SERVER) {
+                    && m.group == MQProtocol.Group.LOGIC_SERVER) {
                 if (m.token != null) {
                     communicatorToken = m.token;
                 } else {
@@ -214,7 +215,7 @@ public class WebSocketCommunicator implements Communicator {
 
         public void send(MQMessage m, MQProtocol.Head p) {
             m.token = communicatorToken;
-            m.from = id;
+            m.group = id;
             send(MQProtocol.Head.constructRequest(p, m));
         }
     }

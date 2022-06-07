@@ -21,6 +21,11 @@ public class LogicServer {
                 }
 
                 @Override
+                public void doReceive(MQMessage msg) {
+                    logger.debug(msg.toJson());
+                }
+
+                @Override
                 public void afterReceive() {
                     logger.debug("Receive complete.");
                 }
@@ -33,7 +38,7 @@ public class LogicServer {
                 }
                 sleep(SystemConfiguration.getSleepTime());
             }
-            communicator.register(MQProtocol.MQSource.LOGIC,
+            communicator.register(MQProtocol.Group.LOGIC_SERVER,
                     () -> { logger.info("Logic server started."); },
                     () -> {
                         logger.error("Register to MQ failed.");

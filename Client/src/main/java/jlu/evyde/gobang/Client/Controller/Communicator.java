@@ -26,7 +26,7 @@ public interface Communicator {
      * @param success Callback function when registered successfully.
      * @param failed Callback function when registered failed.
      */
-    void register(MQProtocol.MQSource id, Callback success, Callback failed);
+    void register(MQProtocol.Group id, Callback success, Callback failed);
 
     /**
      * Send produce request to MQ server.

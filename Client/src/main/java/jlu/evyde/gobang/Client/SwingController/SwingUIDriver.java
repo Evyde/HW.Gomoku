@@ -135,7 +135,7 @@ public class SwingUIDriver implements UIDriver {
                 }
                 sleep(SystemConfiguration.getSleepTime());
             }
-            communicator.register(MQProtocol.MQSource.UI, complete, () -> {
+            communicator.register(MQProtocol.Group.GAMER, complete, () -> {
                 logger.error("Register to MQ failed.");
                 throw new GobangException.UICommunicatorInitFailedException();
             });

@@ -78,7 +78,7 @@ public class Utils {
             try {
                 MQMessage m = MQMessage.fromJson(s);
                 if ((clientToken == null || MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code))
-                        && m.from == MQProtocol.MQSource.SERVER) {
+                        && m.group == MQProtocol.Group.LOGIC_SERVER) {
                     if (m.token != null) {
                         clientToken = m.token;
                     } else {

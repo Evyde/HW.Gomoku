@@ -4,19 +4,19 @@ import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 
 public abstract class UICommunicatorReceiveListener implements CommunicatorReceiveListener {
-    public final MQProtocol.MQSource mqSource;
+    public final MQProtocol.Group group;
     public final UIDriver uiDriver;
 
     public UICommunicatorReceiveListener (UIDriver uid) {
-        this.mqSource = MQProtocol.MQSource.UI;
+        this.group = MQProtocol.Group.WATCHER;
         this.uiDriver = uid;
     }
 
     public void doReceive(MQMessage msg) {
         beforeReceive();
         if (msg != null) {
-            if (msg.from != null) {
-                if (mqSource.canConsume(msg.from)) {
+            if (msg.code != null) {
+                if (group.hasPrivilege(MQProtocol.Code.fromInteger(msg.code))) {
                     if (MQProtocol.Code.PUT_CHESS.getCode().equals(msg.code)) {
                         // Put chess
                         if (msg.chess != null) {

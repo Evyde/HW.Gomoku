@@ -108,8 +108,8 @@ public class Main {
         initLogicServer();
         logger.warn("Stage 3: Initialize UI server.");
         initUIServer();
-        logger.warn("Stage 4: Initialize main frame.");
-        initMainFrame();
+        // logger.warn("Stage 4: Initialize main frame.");
+        // initMainFrame();
         logger.warn("Initialized successfully.");
     }
 
