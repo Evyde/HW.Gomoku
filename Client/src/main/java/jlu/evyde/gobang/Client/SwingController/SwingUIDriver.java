@@ -51,7 +51,7 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void initMainFrame(Callback complete, Callback disposeListener) throws GobangException.FrameInitFailedException {
-        gameFrame = new MainFrame(disposeListener);
+        gameFrame = new MainFrame(disposeListener, this.communicator);
         detector.registerListener(isDark -> {
             SwingUtilities.invokeLater(() -> {
                 if (isDark) {
@@ -119,12 +119,12 @@ public class SwingUIDriver implements UIDriver {
             communicator.addReceiveListener(new UICommunicatorReceiveListener(this) {
                 @Override
                 public void beforeReceive() {
-                    logger.info("Received message.");
+                    logger.debug("Receiving message.");
                 }
 
                 @Override
                 public void afterReceive() {
-                    logger.info("Receive complete.");
+                    logger.debug("Receive complete.");
                 }
             });
             communicator.connect(new MQServerAddress());

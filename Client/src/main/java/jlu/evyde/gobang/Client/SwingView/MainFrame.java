@@ -1,5 +1,6 @@
 package jlu.evyde.gobang.Client.SwingView;
 import jlu.evyde.gobang.Client.Controller.Callback;
+import jlu.evyde.gobang.Client.Controller.Communicator;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
 import jlu.evyde.gobang.Client.SwingController.GUIPrintStream;
@@ -29,9 +30,11 @@ public class MainFrame extends GameFrame {
     private Stack<MQProtocol.Chess> steps = new Stack<>();
     private HashSet<Point> positions = new HashSet<>();
     private final Logger logger = LoggerFactory.getLogger(MainFrame.class);
-    public MainFrame(Callback disposeListener) {
+    private Communicator communicator;
+    public MainFrame(Callback disposeListener, Communicator uiCommunicator) {
         super();
 
+        this.communicator = uiCommunicator;
         // save source print stream
         stdout = System.out;
         stderr = System.err;
