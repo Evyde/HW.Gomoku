@@ -172,7 +172,7 @@ public class WebSocketMQServer implements MQBrokerServer {
         @Override
         public void onMessage(WebSocket webSocket, String s) {
             clearMessageQueue();
-            logger.debug(s);
+            logger.trace(s);
             String[] splitMessage = s.split("\n");
 
             // parse message content
@@ -296,6 +296,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                     webSocket.getRemoteSocketAddress(),
                     e.toString()
             );
+            System.exit(5);
         }
 
         @Override
