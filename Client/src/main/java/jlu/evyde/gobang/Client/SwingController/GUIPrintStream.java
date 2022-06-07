@@ -1,10 +1,16 @@
 package jlu.evyde.gobang.Client.SwingController;
 
+import jlu.evyde.gobang.Client.Model.SystemConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.awt.*;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import javax.swing.*;
 import javax.swing.text.*;
+
+import static java.lang.Thread.sleep;
 
 /*
   These codes are from Internet, sources are in JavaDocs below
@@ -18,6 +24,7 @@ import javax.swing.text.*;
  * &#064;email   chenweionline@hotmail.com
  */
 public class GUIPrintStream extends PrintStream {
+    private static final Logger logger = LoggerFactory.getLogger(GUIPrintStream.class);
 
     private final JTextPane component;
 
@@ -66,15 +73,25 @@ public class GUIPrintStream extends PrintStream {
     public void write(byte[] buf, int off, int len) {
         final String message = new String(buf, off, len);
 
+        Integer counter = SystemConfiguration.getMaxRetryTime();
         while (locked) {
-            Thread.onSpinWait();
+            if (counter-- <= 0) {
+                logger.error("Thread death lock detected, release anyway.");
+                locked = false;
+                break;
+            }
+            try {
+                sleep(SystemConfiguration.getSleepTime());
+            } catch (InterruptedException e) {
+                logger.warn("Cannot sleep.");
+            }
         }
         locked = true;
         component.setEditable(true);
         if (component.getText().split("\n").length >= 100) {
             component.setText("");
         }
-        print(component, message, c);
+        appendToPane(component, message, c);
         component.setEditable(false);
         locked = false;
     }
