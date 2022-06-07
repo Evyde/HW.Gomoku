@@ -23,7 +23,7 @@
             <onMatch>ACCEPT</onMatch>
         </filter>
         <encoder>
-            <pattern>%date %level [%thread] %logger: %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -50,7 +50,7 @@
             <onMatch>DENY</onMatch>
         </filter>
         <encoder>
-            <pattern>%date %level [%thread] %logger: %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
