@@ -17,12 +17,12 @@ public class LogicServer {
             communicator.addReceiveListener(new LogicCommunicatorReceiveListener() {
                 @Override
                 public void beforeReceive() {
-                    logger.info("Receiving message.");
+                    logger.debug("Receiving message.");
                 }
 
                 @Override
                 public void afterReceive() {
-                    logger.info("Receive complete.");
+                    logger.debug("Receive complete.");
                 }
             });
             communicator.connect(new MQServerAddress());
@@ -37,7 +37,7 @@ public class LogicServer {
                     () -> { logger.info("Logic server started."); },
                     () -> {
                         logger.error("Register to MQ failed.");
-                        throw new GobangException.UICommunicatorInitFailedException();
+                        throw new GobangException.LogicCommunicatorInitFailedException();
                     });
         } catch (Exception e) {
             e.printStackTrace();
