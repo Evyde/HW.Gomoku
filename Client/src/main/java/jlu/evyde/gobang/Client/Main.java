@@ -59,7 +59,7 @@ public class Main {
     }
 
     private static void initLogicServer() {
-        ls = new LogicServer(uid);
+        ls = new LogicServer();
     }
 
     private static class dispose implements Callback {
@@ -108,8 +108,14 @@ public class Main {
         }
         logger.warn("Stage 2: Initialize logic server.");
         initLogicServer();
-        logger.warn("Stage 3: Initialize UI server.");
-        initUIServer();
+        // logger.warn("Stage 3: Initialize UI server.");
+        // initUIServer();
+//        try {
+//            sleep(5000);
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+//        ((SwingUIDriver) uid).getCommunicator().put(new MQProtocol.Chess(new Point(), MQProtocol.Chess.Color.WHITE));
         // logger.warn("Stage 4: Initialize main frame.");
         // initMainFrame();
         logger.warn("Initialized successfully.");

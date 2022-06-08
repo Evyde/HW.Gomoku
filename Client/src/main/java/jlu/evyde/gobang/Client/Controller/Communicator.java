@@ -67,4 +67,9 @@ public interface Communicator {
      * @param crl CommunicatorReceiveListener class.
      */
     void addReceiveListener(CommunicatorReceiveListener crl);
+
+    /**
+     * Destroy this communicator.
+     */
+    void close();
 }

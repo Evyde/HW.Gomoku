@@ -189,6 +189,14 @@ public class WebSocketCommunicator implements Communicator {
         listener = crl;
     }
 
+    /**
+     * Destroy this communicator.
+     */
+    @Override
+    public void close() {
+        wsc.close();
+    }
+
     private class RealWebSocketCommunicator extends WebSocketClient {
 
         public RealWebSocketCommunicator(MQServerAddress msa) {

@@ -13,10 +13,12 @@ public class LogicServer {
     private Communicator communicator = CommunicatorFactory.getWebSocketCommunicator();
     private Logger logger = LoggerFactory.getLogger(LogicServer.class);
     private List<MQProtocol.Chess.Color> gamer = new CopyOnWriteArrayList<>();
-    private MQProtocol.Chess.Color[] board = new MQProtocol.Chess.Color[
-            SystemConfiguration.getBoardWidth() * SystemConfiguration.getBoardHeight()];
+    private MQProtocol.Chess.Color[][] board = new MQProtocol.Chess.Color
+            [SystemConfiguration.getBoardHeight()][SystemConfiguration.getBoardWidth()];
+    private MQProtocol.Chess.Color nowMove = SystemConfiguration.getFIRST().equals(MQProtocol.Chess.Color.WHITE)?
+            MQProtocol.Chess.Color.WHITE: MQProtocol.Chess.Color.BLACK;
 
-    public LogicServer(UIDriver uid) {
+    public LogicServer() {
         try {
             communicator.addReceiveListener(new LogicCommunicatorReceiveListener() {
                 @Override
@@ -36,6 +38,17 @@ public class LogicServer {
                             registerSuccess(msg);
                         } else {
                             registerFailed(msg);
+                        }
+                    } else if (MQProtocol.Code.PUT_CHESS.getCode().equals(msg.code)) {
+                        if (msg.chess != null && msg.chess.getColor() != null) {
+                            if (nowMove.equals(msg.chess.getColor())) {
+                                if (setChessAt(msg.chess)) {
+                                    nowMove = nowMove.equals(MQProtocol.Chess.Color.WHITE)?
+                                            MQProtocol.Chess.Color.BLACK: MQProtocol.Chess.Color.WHITE;
+                                    communicator.put(msg.chess);
+                                    // isWin(msg.chess);
+                                }
+                            }
                         }
                     }
                 }
@@ -78,6 +91,7 @@ public class LogicServer {
 
     private void registerSuccess(MQMessage msg) {
         msg.msg = msg.token.toString();
+        msg.status = MQProtocol.Status.SUCCESS;
         communicator.redirect(msg, () -> {
             logger.warn("Register for {} to Group {} approved.", msg.msg, msg.group);
         }, () -> {
@@ -96,11 +110,45 @@ public class LogicServer {
         });
     }
 
-    private static Integer decreaseDimension(MQProtocol.Chess chess) {
-        return (int) chess.getPosition().getX() + (int) chess.getPosition().getY() * SystemConfiguration.getBoardWidth();
+    public void closeServer() {
+        communicator.close();
     }
 
-    private static MQProtocol.Chess increaseDimension(Integer index) {
+    private MQProtocol.Chess.Color getChessAt(MQProtocol.Chess chess) {
+        if (chess != null && chess.getPosition() != null) {
+            return getChessAt((int) Math.floor(chess.getPosition().getX()), (int) Math.floor(chess.getPosition().getY()));
+        }
+        return null;
+    }
 
+    private MQProtocol.Chess.Color getChessAt(Integer x, Integer y) {
+        return this.board[y][x];
+    }
+
+    private boolean setChessAt(MQProtocol.Chess chess) {
+        if (chess != null && chess.getPosition() != null && chess.getColor() != null) {
+            return setChessAt((int) Math.floor(chess.getPosition().getX()), (int) Math.floor(chess.getPosition().getY()),
+                    chess.getColor());
+        }
+        return false;
+    }
+
+    private boolean setChessAt(Integer x, Integer y, MQProtocol.Chess.Color color) {
+        if (this.getChessAt(x, y) == null) {
+            this.board[y][x] = color;
+            return true;
+        }
+        return false;
+    }
+
+    private void isWin(MQProtocol.Chess chess) {
+        try {
+            sleep(SystemConfiguration.getSleepTime());
+        } catch (Exception e) {
+
+        }
+        // judge if this chess wins
+
+        communicator.win(chess.getColor());
     }
 }

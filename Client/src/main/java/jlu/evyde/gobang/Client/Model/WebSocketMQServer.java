@@ -15,9 +15,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
-// TODO: Every Produce Message from UI show push to logic server first, then let logic server broadcast to all UIs,
-//      to prevent wrong put action to a same position (Also should judge by UI).
-//      Simple check to prevent fake PRODUCE request from WATCHER (check PUTTERs' token).
+// TODO: Fix cannot remove from Guest error.
 public class WebSocketMQServer implements MQBrokerServer {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private WebSocketServer wss;
@@ -117,6 +115,9 @@ public class WebSocketMQServer implements MQBrokerServer {
          * @return true if this message has consumer.
          */
         private boolean autoBroadcast(MQMessage m) {
+            if (!MQProtocol.Code.AUTH.getCode().equals(m.code)) {
+                m.token = null;
+            }
             boolean broadcastStatus = false;
             while (broadcastLock.isLocked()) {
                 Thread.onSpinWait();
@@ -248,6 +249,9 @@ public class WebSocketMQServer implements MQBrokerServer {
                                         , client.getToken()
                                         , incomingMQMessage.group
                                 );
+                                for (MQMessage m: persistenceMessages) {
+                                    client.send(m);
+                                }
                             } else {
                                 logger.warn("No specified session found, maybe closed.");
                             }
@@ -281,7 +285,9 @@ public class WebSocketMQServer implements MQBrokerServer {
                         normalMessages.addLast(incomingMQMessage);
                     } else {
                         // success, persistence
-                        persistenceMessages.addLast(incomingMQMessage);
+                        if (MQProtocol.Group.LOGIC_SERVER.equals(incomingMQMessage.group)) {
+                            persistenceMessages.addLast(incomingMQMessage);
+                        }
                     }
                 }
             } else if (MQProtocol.Head.CONSUME.name().equals(splitMessage[0])) {
