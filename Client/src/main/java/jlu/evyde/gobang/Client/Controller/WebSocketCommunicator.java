@@ -21,6 +21,7 @@ public class WebSocketCommunicator implements Communicator {
     private final Logger logger = LoggerFactory.getLogger(WebSocketCommunicator.class);
     private UUID communicatorToken = null;
     private Integer triedTimes = 0;
+    private MQMessage registerMessage;
 
     /**
      * Connect to message queue server.
@@ -51,24 +52,25 @@ public class WebSocketCommunicator implements Communicator {
     /**
      * Register this communicator to MQ server.
      *
-     * @param id      Message queue source.
+     * @param message Message to send.
      * @param success Callback function when registered successfully.
      * @param failed  Callback function when registered failed.
      */
     @Override
-    public void register(MQProtocol.Group id, Callback success, Callback failed) {
-        this.id = id;
+    public void register(MQMessage message, Callback success, Callback failed) {
+        this.id = message.group;
+        this.registerMessage = message;
         if (SystemConfiguration.getMaxRetryTime().equals(this.triedTimes)) {
             failed.run();
             logger.error("Register reached in max retry time, abandon");
         }
         try {
-            wsc.send(MQMessage.constructRegisterMessage(id));
+            wsc.send(MQMessage.constructRegisterMessage(message));
             Integer counter = SystemConfiguration.getMaxRetryTime();
             while (this.communicatorToken != null) {
                 if (counter-- <= 0) {
                     this.triedTimes++;
-                    register(id, success, failed);
+                    register(message, success, failed);
                 }
                 try {
                     sleep(SystemConfiguration.getSleepTime());
@@ -81,7 +83,7 @@ public class WebSocketCommunicator implements Communicator {
             e.printStackTrace();
             logger.error("Register error, retry {} times.", SystemConfiguration.getMaxRetryTime());
             this.triedTimes++;
-            register(id, success, failed);
+            register(message, success, failed);
         }
         if (this.triedTimes == 0) {
             success.run();
@@ -156,6 +158,26 @@ public class WebSocketCommunicator implements Communicator {
     }
 
     /**
+     * Let logic server send redirect message to MQ server for authentication.
+     * Should be called by Logic Server ONLY.
+     *
+     * @param message Message to redirect.
+     * @param sendComplete Callback method when send complete.
+     * @param sendError    Callback method when send error.
+     */
+    @Override
+    public void redirect(MQMessage message, Callback sendComplete, Callback sendError) {
+        try {
+            wsc.send(message, MQProtocol.Head.REDIRECT);
+        } catch (Exception e) {
+            logger.error("Produce error.");
+            e.printStackTrace();
+            sendError.run();
+        }
+        sendComplete.run();
+    }
+
+    /**
      * Add receive listener to this communicator.
      * When message comes in, call this listener.
      *
@@ -190,8 +212,7 @@ public class WebSocketCommunicator implements Communicator {
             }
             assert m != null;
             // TODO: Return register failed message.
-            if ((communicatorToken == null || MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code))
-                    && m.group == MQProtocol.Group.LOGIC_SERVER) {
+            if (MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code)) {
                 if (m.token != null) {
                     communicatorToken = m.token;
                 } else {
@@ -205,7 +226,11 @@ public class WebSocketCommunicator implements Communicator {
 
         @Override
         public void onClose(int i, String s, boolean b) {
-
+            logger.error("Connection closed: {}.", s);
+            logger.warn("Try re-register.");
+            register(registerMessage, () -> { logger.warn("Re-register success."); }, () -> {
+                logger.warn("Re-register error.");
+            });
         }
 
         @Override
@@ -215,7 +240,9 @@ public class WebSocketCommunicator implements Communicator {
 
         public void send(MQMessage m, MQProtocol.Head p) {
             m.token = communicatorToken;
-            m.group = id;
+            if (!MQProtocol.Code.AUTH.getCode().equals(m.code)) {
+                m.group = id;
+            }
             send(MQProtocol.Head.constructRequest(p, m));
         }
     }

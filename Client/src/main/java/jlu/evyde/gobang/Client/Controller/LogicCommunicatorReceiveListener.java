@@ -1,6 +1,7 @@
 package jlu.evyde.gobang.Client.Controller;
 
 import jlu.evyde.gobang.Client.Model.MQMessage;
+import jlu.evyde.gobang.Client.Model.MQProtocol;
 
 public abstract class LogicCommunicatorReceiveListener implements CommunicatorReceiveListener {
 
@@ -9,7 +10,10 @@ public abstract class LogicCommunicatorReceiveListener implements CommunicatorRe
 
     @Override
     public void doReceive(MQMessage msg) {
+        if (MQProtocol.Code.AUTH.getCode().equals(msg.code)) {
+            // TODO: Valid registration check.
 
+        }
     }
 
     @Override

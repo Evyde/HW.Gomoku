@@ -1,6 +1,5 @@
 package jlu.evyde.gobang.Client.Controller;
 
-import com.google.gson.Gson;
 import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.MQServerAddress;
@@ -22,11 +21,11 @@ public interface Communicator {
 
     /**
      * Register this communicator to MQ server.
-     * @param id Message queue source.
+     * @param message Message to register.
      * @param success Callback function when registered successfully.
      * @param failed Callback function when registered failed.
      */
-    void register(MQProtocol.Group id, Callback success, Callback failed);
+    void register(MQMessage message, Callback success, Callback failed);
 
     /**
      * Send produce request to MQ server.
@@ -52,6 +51,15 @@ public interface Communicator {
      * @param color Chess color to win.
      */
     void win(MQProtocol.Chess.Color color);
+
+    /**
+     * Let logic server send redirect message to MQ server for authentication.
+     * Should be called by Logic Server ONLY.
+     * @param message Message to redirect.
+     * @param sendComplete Callback method when send complete.
+     * @param sendError    Callback method when send error.
+     */
+    void redirect(MQMessage message, Callback sendComplete, Callback sendError);
 
     /**
      * Add receive listener to this communicator.

@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import jlu.evyde.gobang.Client.Controller.Callback;
 import jlu.evyde.gobang.Client.Controller.GobangException;
 import org.java_websocket.WebSocket;
-import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
@@ -12,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -21,8 +21,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class WebSocketMQServer implements MQBrokerServer {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private WebSocketServer wss;
-
-    // TODO: Change this to multiple kind of messages to cover MQSource for better performance.
 
     /**
      * Start message queue broker server in MQServerAddress.
@@ -68,12 +66,11 @@ public class WebSocketMQServer implements MQBrokerServer {
         private static final Gson jsonParser = new Gson();
         private final Callback startComplete;
         // Obviously FIFO, use linked list as double ends queue.
-        private final Deque<MQMessage> normalMessages = new LinkedList<>();
-        private final Deque<MQMessage> authMessages = new LinkedList<>();
-        private final Deque<MQMessage> persistenceMessages = new LinkedList<>();
-        private final Map<MQProtocol.Group, List<WebSocket>> clients = new ConcurrentHashMap<>();
-        private final Map<WebSocket, MQProtocol.Group> clientGroupMap = new ConcurrentHashMap<>();
-        private final Map<MQProtocol.Group, UUID> tokens = new ConcurrentHashMap<>();
+        private final Deque<MQMessage> normalMessages = new ConcurrentLinkedDeque<>();
+        private final Deque<MQMessage> persistenceMessages = new ConcurrentLinkedDeque<>();
+        private final Deque<MQMessage> authMessages = new ConcurrentLinkedDeque<>();
+
+        private final Map<MQProtocol.Group, List<MQClient>> clients = new ConcurrentHashMap<>();
         private final transient ReentrantLock broadcastLock = new ReentrantLock();
 
         public RealWebSocketMQServer(MQServerAddress msa, Callback startComplete) {
@@ -81,7 +78,6 @@ public class WebSocketMQServer implements MQBrokerServer {
             this.startComplete = startComplete;
             for (MQProtocol.Group g: MQProtocol.Group.getAllGroup()) {
                 clients.put(g, new CopyOnWriteArrayList<>());
-                tokens.put(g, UUID.randomUUID());
             }
         }
 
@@ -128,14 +124,11 @@ public class WebSocketMQServer implements MQBrokerServer {
             logger.info("Broadcast to all available consumers.");
             broadcastLock.lock();
             for (MQProtocol.Group g: m.group.pushMyMessageTo()) {
-                if (!clients.get(g).isEmpty()) {
-                    for (WebSocket client: clients.get(g)) {
-                        if (client != null && !client.isClosed()) {
-                            client.send(m.toJson());
-                            broadcastStatus = true;
-                        } else {
-                            clients.get(g).remove(client);
-                        }
+                for (MQClient client: clients.get(g)) {
+                    if (client.send(m)) {
+                        broadcastStatus = true;
+                    } else {
+                        clients.get(g).remove(client);
                     }
                 }
             }
@@ -151,27 +144,30 @@ public class WebSocketMQServer implements MQBrokerServer {
             logger.info("New websocket open: {}",
                     webSocket.getRemoteSocketAddress()
             );
+            MQClient client = new MQClient(webSocket);
+            // generate uuid and put this client to GUEST group
+            // check if group has enough room
             if (clients.get(MQProtocol.Group.GUEST).size() < MQProtocol.Group.GUEST.getCapacityLimit()) {
-                clientGroupMap.put(webSocket, MQProtocol.Group.GUEST);
-                clients.get(MQProtocol.Group.GUEST).add(webSocket);
+                UUID generatedUUID = UUID.randomUUID();
+                // update this four data structure
+                client.setGroup(MQProtocol.Group.GUEST);
+                client.setToken(generatedUUID);
+                clients.get(MQProtocol.Group.GUEST).add(client);
             } else {
                 logger.warn("Guest queue is full, may be logic server error.");
-                webSocket.close(CloseFrame.ABNORMAL_CLOSE,
-                        constructFailedResponse("Sorry, the queue of guest is full, try connect later."));
+                client.close(constructFailedResponse("Sorry, the queue of guest is full, try connect later."));
             }
         }
 
         @Override
         public void onClose(WebSocket webSocket, int i, String s, boolean b) {
-            if (clientGroupMap.get(webSocket) != null) {
-                clients.get(clientGroupMap.get(webSocket)).remove(webSocket);
-            }
             logger.info("Websocket connection closed: {}", webSocket.getRemoteSocketAddress());
         }
 
         @Override
         public void onMessage(WebSocket webSocket, String s) {
             clearNormalMessageQueue();
+            MQClient client = new MQClient(webSocket);
             logger.trace(s);
             String[] splitMessage = s.split("\n");
 
@@ -182,6 +178,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                         || MQProtocol.Head.PRODUCE.name().equals(i)
                         || MQProtocol.Head.CONSUME.name().equals(i)
                         || MQProtocol.Head.REGISTER.name().equals(i)
+                        || MQProtocol.Head.REDIRECT.name().equals(i)
                 ) {
                     continue;
                 }
@@ -191,6 +188,11 @@ public class WebSocketMQServer implements MQBrokerServer {
             MQMessage incomingMQMessage;
             try {
                 incomingMQMessage = jsonParser.fromJson(message.toString(), MQMessage.class);
+                assert incomingMQMessage != null;
+                assert incomingMQMessage.token != null;
+                assert incomingMQMessage.group != null;
+                client.setToken(incomingMQMessage.token);
+                client.setGroup(incomingMQMessage.group);
             } catch (Exception e) {
                 logger.warn("Invalid json.");
                 logger.debug(message.toString());
@@ -200,49 +202,82 @@ public class WebSocketMQServer implements MQBrokerServer {
             logger.info("Incoming {} message from {}.", splitMessage[0], webSocket.getRemoteSocketAddress());
             if (MQProtocol.Head.REDIRECT.name().equals(splitMessage[0])) {
                 // auth from logic server
-                if (
-                        incomingMQMessage == null
-                                || !tokens.get(MQProtocol.Group.LOGIC_SERVER).equals(incomingMQMessage.token)
-                                || incomingMQMessage.group == null
-                ) {
-                    webSocket.close(CloseFrame.ABNORMAL_CLOSE,
-                            constructFailedResponse("Unauthorized AUTH behaviour!"));
-                    logger.warn("Unauthorized AUTH behaviour!");
-                } else {
-                    if (clients.get(MQProtocol.Group.GUEST).contains(incomingMQMessage.session)) {
-                        clients.get(incomingMQMessage.group).add(incomingMQMessage.session);
-                        clients.get(MQProtocol.Group.GUEST).remove(incomingMQMessage.session);
-                        clientGroupMap.put(incomingMQMessage.session, incomingMQMessage.group);
-                        // replace token
-                        incomingMQMessage.token = tokens.get(incomingMQMessage.group);
-                        // replace op code
-                        incomingMQMessage.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
-                        incomingMQMessage.session.send(incomingMQMessage.toJson());
-                        logger.info("Register for {} in Group {} successfully."
-                                , incomingMQMessage.session.getRemoteSocketAddress()
-                                , incomingMQMessage.group
-                        );
+                if (incomingMQMessage.msg != null) {
+                    UUID targetUUID = UUID.fromString(incomingMQMessage.msg);
+                    if (targetUUID.toString().equals(incomingMQMessage.msg)) {
+                        if (!clients.get(MQProtocol.Group.LOGIC_SERVER).contains(client)) {
+                            client.close(constructFailedResponse("Unauthorized AUTH behaviour!"));
+                            logger.debug(client.toString());
+                            logger.warn("Unauthorized AUTH behaviour!");
+                        } else {
+                            if (!MQProtocol.Status.SUCCESS.equals(incomingMQMessage.status)) {
+                                try {
+                                    client.setToken(UUID.fromString(incomingMQMessage.msg));
+                                    incomingMQMessage.token = null;
+                                    incomingMQMessage.code = MQProtocol.Code.REGISTER_FAILED.getCode();
+                                    incomingMQMessage.msg = "Register failed.";
+
+                                    clients.get(MQProtocol.Group.GUEST)
+                                            .get(clients.get(MQProtocol.Group.GUEST)
+                                                    .indexOf(client))
+                                            .send(incomingMQMessage);
+                                    return;
+                                } catch (Exception e) {
+                                    logger.warn(e.toString());
+                                    return;
+                                }
+                            }
+                            client.setToken(targetUUID);
+                            if (clients.get(MQProtocol.Group.GUEST).contains(client)) {
+                                // move client from guest group to requested group
+                                client.setWebSocket(
+                                        clients.get(MQProtocol.Group.GUEST)
+                                                .get(clients.get(MQProtocol.Group.GUEST)
+                                                        .indexOf(client))
+                                                .getWebSocket());
+                                clients.get(incomingMQMessage.group).add(client);
+                                clients.get(MQProtocol.Group.GUEST).remove(client);
+                                // replace token
+                                // incomingMQMessage.token = tokens.get(incomingMQMessage.group);
+                                // replace op code
+                                incomingMQMessage.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
+                                incomingMQMessage.token = targetUUID;
+                                incomingMQMessage.msg = "Access approved.";
+                                client.send(incomingMQMessage);
+                                logger.info("Register for {} to Group {} successfully."
+                                        , client.getToken()
+                                        , incomingMQMessage.group
+                                );
+                            } else {
+                                logger.warn("No specified session found, maybe closed.");
+                            }
+                        }
                     } else {
-                        logger.warn("No specified session found, maybe closed.");
+                        logger.warn("Invalid client UUID.");
+                        client.close(constructFailedResponse("Invalid UUID in message."));
                     }
+                } else {
+                    logger.warn("Invalid client UUID.");
+                    client.send(constructFailedResponse("Invalid UUID in message."));
                 }
+
             } else if (MQProtocol.Head.PRODUCE.name().equals(splitMessage[0])) {
                 // produce
                 if (
-                        incomingMQMessage == null
-                                || incomingMQMessage.group == null
-                        || !tokens.get(incomingMQMessage.group).equals(incomingMQMessage.token)
-                        || incomingMQMessage.code == null
-                        || !incomingMQMessage.group.hasPrivilege(MQProtocol.Code.fromInteger(incomingMQMessage.code))
+                        !clients.get(incomingMQMessage.group).contains(client)
+                                || incomingMQMessage.code == null
+                                || !incomingMQMessage.group.hasPrivilegeToDo(MQProtocol.Code.fromInteger(incomingMQMessage.code))
                 ) {
                     // no privilege
-                    logger.warn("Detect access denied behaviour.");
-                    webSocket.close(CloseFrame.ABNORMAL_CLOSE, constructFailedResponse("Access denied!"));
+                    logger.warn("Detect access denied behaviour: {}.",
+                            MQProtocol.Code.fromInteger(incomingMQMessage.code));
+                    client.send(constructFailedResponse("Access denied!"));
                     return;
                 } else {
                     // call auto broadcast
                     if (!autoBroadcast(incomingMQMessage)) {
                         // broadcast failed, save message
+                        // there's no AUTH message from PRODUCE method
                         normalMessages.addLast(incomingMQMessage);
                     } else {
                         // success, persistence
@@ -256,57 +291,50 @@ public class WebSocketMQServer implements MQBrokerServer {
                 // Register
                 // TODO: Could let token has expired time.
                 if (
-                        incomingMQMessage == null
-                                || !SystemConfiguration.getInitializedUuid().equals(incomingMQMessage.token)
-                                || incomingMQMessage.group == null
+                        !incomingMQMessage.group.getInitializedUUID().equals(incomingMQMessage.token)
                                 || (
-                                incomingMQMessage.group == MQProtocol.Group.LOGIC_SERVER &&
-                                        (
-                                                (clients.get(MQProtocol.Group.LOGIC_SERVER).size() >=
-                                                        MQProtocol.Group.LOGIC_SERVER.getCapacityLimit()) &&
-                                                        !allLogicServerDown()
-                                        )
-                        )
+                                        MQProtocol.Group.LOGIC_SERVER.equals(incomingMQMessage.group)
+                                        && clients.get(MQProtocol.Group.LOGIC_SERVER).size() >=
+                                        MQProtocol.Group.LOGIC_SERVER.getCapacityLimit() && !allLogicServerDown()
+                                    )
                                 || clients.get(incomingMQMessage.group).size() >= incomingMQMessage.group.getCapacityLimit()
-                                || incomingMQMessage.group == MQProtocol.Group.GUEST
+                                || MQProtocol.Group.GUEST.equals(incomingMQMessage.group)
                 ) {
                     // invalid register message
-                    webSocket.close(CloseFrame.ABNORMAL_CLOSE, constructFailedResponse("Invalid register message."));
+                    client.close(constructFailedResponse("Invalid register message."));
                     logger.warn("Receive invalid register message.");
                     logger.debug(s);
                 } else {
                     if (incomingMQMessage.group == MQProtocol.Group.LOGIC_SERVER) {
-                        clients.get(MQProtocol.Group.LOGIC_SERVER).add(webSocket);
-                        clientGroupMap.put(webSocket, MQProtocol.Group.LOGIC_SERVER);
-                        incomingMQMessage.token = tokens.get(MQProtocol.Group.LOGIC_SERVER);
+                        // register immediately
+                        client.setToken(UUID.randomUUID());
+                        clients.get(MQProtocol.Group.LOGIC_SERVER).add(client);
+                        incomingMQMessage.token = client.getToken();
                         incomingMQMessage.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
                         incomingMQMessage.status = MQProtocol.Status.SUCCESS;
-                        webSocket.send(incomingMQMessage.toJson());
+                        client.send(incomingMQMessage);
                         clearRegisterMessageQueue();
                         return;
                     }
-
-                    incomingMQMessage.session = webSocket;
                     // replace token with random token
                     incomingMQMessage.token = UUID.randomUUID();
                     // replace op code to AUTH
                     incomingMQMessage.code = MQProtocol.Code.AUTH.getCode();
+                    client.setToken(incomingMQMessage.token);
 
                     if (allLogicServerDown()) {
-                        logger.warn("All logic server down, no body can process auth message, saved.");
+                        logger.warn("All logic server down, no body can process auth message.");
                         authMessages.addLast(incomingMQMessage);
                     }
                     // send to logic server with no response and add it to guest
-
-                    clientGroupMap.put(webSocket, MQProtocol.Group.GUEST);
-                    clients.get(MQProtocol.Group.GUEST).add(webSocket);
+                    clients.get(MQProtocol.Group.GUEST).add(client);
                     autoBroadcast(incomingMQMessage);
                 }
             }
         }
 
         private boolean allLogicServerDown() {
-            for (WebSocket w: clients.get(MQProtocol.Group.LOGIC_SERVER)) {
+            for (MQClient w: clients.get(MQProtocol.Group.LOGIC_SERVER)) {
                 if (w != null && !w.isClosed()) {
                     return false;
                 }

@@ -5,6 +5,7 @@ import com.formdev.flatlaf.FlatIntelliJLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.jthemedetecor.OsThemeDetector;
 import jlu.evyde.gobang.Client.Controller.*;
+import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.MQServerAddress;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
@@ -15,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 
+import java.awt.*;
+
 import static java.lang.Thread.sleep;
 
 
@@ -23,6 +26,7 @@ public class SwingUIDriver implements UIDriver {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private Communicator communicator;
     private GameFrame gameFrame;
+    private MQProtocol.Chess.Color gamerColor = SystemConfiguration.getFIRST();
 
     public SwingUIDriver() {
         try {
@@ -135,7 +139,11 @@ public class SwingUIDriver implements UIDriver {
                 }
                 sleep(SystemConfiguration.getSleepTime());
             }
-            communicator.register(MQProtocol.Group.GAMER, complete, () -> {
+            MQMessage registerMessage = new MQMessage();
+            registerMessage.token = MQProtocol.Group.GAMER.getInitializedUUID();
+            registerMessage.group = MQProtocol.Group.GAMER;
+            registerMessage.chess = new MQProtocol.Chess(null, gamerColor);
+            communicator.register(registerMessage, complete, () -> {
                 logger.error("Register to MQ failed.");
                 throw new GobangException.UICommunicatorInitFailedException();
             });
@@ -174,4 +182,7 @@ public class SwingUIDriver implements UIDriver {
         gameFrame.recall();
     }
 
+    public Communicator getCommunicator() {
+        return communicator;
+    }
 }

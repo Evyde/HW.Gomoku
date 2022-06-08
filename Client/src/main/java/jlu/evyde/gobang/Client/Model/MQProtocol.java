@@ -3,6 +3,7 @@ package jlu.evyde.gobang.Client.Model;
 import java.awt.*;
 import java.io.Serializable;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
 /**
  * Protocol definition class.
@@ -37,6 +38,7 @@ public class MQProtocol {
         WHITE_WIN(103, Privilege.SUPERVISOR),
         BLACK_WIN(104, Privilege.SUPERVISOR),
         AUTH(105, Privilege.SUPERVISOR),
+        REGISTER_FAILED(106, Privilege.SUPERVISOR),
         NO_OPERATION(0, Privilege.GUEST),
         ;
         private final Integer code;
@@ -71,6 +73,11 @@ public class MQProtocol {
 
         public Privilege getPrivilege() {
             return needPrivilege;
+        }
+
+        @Override
+        public String toString() {
+            return bundle.getString(this.name());
         }
     }
 
@@ -125,25 +132,25 @@ public class MQProtocol {
     }
 
     public enum Group {
-        GUEST(Privilege.GUEST, 5) {
+        GUEST(Privilege.GUEST, 5, UUID.randomUUID()) {
             @Override
             public Group[] pushMyMessageTo() {
                 return new Group[0];
             }
         },
-        GAMER(Privilege.MACHINE, 2) {
+        GAMER(Privilege.MACHINE, 2, UUID.nameUUIDFromBytes("GAMER_MACHINE_Evyde".getBytes())) {
             @Override
             public Group[] pushMyMessageTo() {
                 return new Group[]{ LOGIC_SERVER };
             }
         },
-        WATCHER(Privilege.USER, Integer.MAX_VALUE) {
+        WATCHER(Privilege.USER, Integer.MAX_VALUE, UUID.nameUUIDFromBytes("WATHCER_USER_Evyde".getBytes())) {
             @Override
             public Group[] pushMyMessageTo() {
                 return new Group[0];
             }
         },
-        LOGIC_SERVER(Privilege.SUPERVISOR, 1) {
+        LOGIC_SERVER(Privilege.SUPERVISOR, 1, UUID.nameUUIDFromBytes("LOGIC_SERVER_SUPERVISOR_Evyde".getBytes())) {
             @Override
             public Group[] pushMyMessageTo() {
                 return new Group[]{ GAMER, WATCHER };
@@ -152,9 +159,11 @@ public class MQProtocol {
 
         private final Privilege privilege;
         private final Integer capacityLimit;
-        Group(Privilege privilege, Integer capacityLimit) {
+        private final UUID token;
+        Group(Privilege privilege, Integer capacityLimit, UUID token) {
             this.capacityLimit = capacityLimit;
             this.privilege = privilege;
+            this.token = token;
         }
         @Override
         public String toString() {
@@ -164,10 +173,11 @@ public class MQProtocol {
         public Privilege getPrivilege() {
             return this.privilege;
         }
+        public UUID getInitializedUUID() { return this.token; }
 
         public abstract Group[] pushMyMessageTo();
 
-        public boolean hasPrivilege(Code code) {
+        public boolean hasPrivilegeToDo(Code code) {
             return Privilege.compareTo(this.getPrivilege(), code.getPrivilege()) >= 0;
         }
 

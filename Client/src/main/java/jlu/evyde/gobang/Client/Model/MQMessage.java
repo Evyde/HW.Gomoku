@@ -19,7 +19,6 @@ public class MQMessage implements Serializable {
     public MQProtocol.Group group;
     public UUID token;
     public String msg;
-    public WebSocket session;
 
     private static final Gson parser = new Gson();
 
@@ -33,8 +32,12 @@ public class MQMessage implements Serializable {
     public static String constructRegisterMessage(MQProtocol.Group group) {
         MQMessage m = new MQMessage();
         m.group = group;
-        m.token = SystemConfiguration.getInitializedUuid();
-        return MQProtocol.Head.constructRequest(MQProtocol.Head.REGISTER, m);
+        m.token = group.getInitializedUUID();
+        return constructRegisterMessage(m);
+    }
+
+    public static String constructRegisterMessage(MQMessage message) {
+        return MQProtocol.Head.constructRequest(MQProtocol.Head.REGISTER, message);
     }
 
     public static String generateProduceMessage(MQProtocol.Group group) {

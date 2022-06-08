@@ -5,9 +5,11 @@ import jlu.evyde.gobang.Client.Controller.GobangException;
 import jlu.evyde.gobang.Client.Controller.UIDriver;
 import jlu.evyde.gobang.Client.Controller.UIDriverFactory;
 import jlu.evyde.gobang.Client.Model.*;
+import jlu.evyde.gobang.Client.SwingController.SwingUIDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.net.InetSocketAddress;
 
 import static java.lang.Thread.sleep;
@@ -111,6 +113,11 @@ public class Main {
         // logger.warn("Stage 4: Initialize main frame.");
         // initMainFrame();
         logger.warn("Initialized successfully.");
+        try {
+            sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void initUIServer() {

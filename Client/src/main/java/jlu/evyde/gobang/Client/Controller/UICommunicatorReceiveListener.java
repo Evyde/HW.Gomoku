@@ -2,21 +2,24 @@ package jlu.evyde.gobang.Client.Controller;
 
 import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class UICommunicatorReceiveListener implements CommunicatorReceiveListener {
     public final MQProtocol.Group group;
     public final UIDriver uiDriver;
+    private static final Logger logger = LoggerFactory.getLogger(UICommunicatorReceiveListener.class);
 
     public UICommunicatorReceiveListener (UIDriver uid) {
         this.group = MQProtocol.Group.WATCHER;
         this.uiDriver = uid;
     }
 
+    @Override
     public void doReceive(MQMessage msg) {
-        beforeReceive();
         if (msg != null) {
             if (msg.code != null) {
-                if (group.hasPrivilege(MQProtocol.Code.fromInteger(msg.code))) {
+                if (group.hasPrivilegeToDo(MQProtocol.Code.fromInteger(msg.code))) {
                     if (MQProtocol.Code.PUT_CHESS.getCode().equals(msg.code)) {
                         // Put chess
                         if (msg.chess != null) {
@@ -32,11 +35,9 @@ public abstract class UICommunicatorReceiveListener implements CommunicatorRecei
                     }
                 }
             }
+            if (MQProtocol.Status.FAILED.equals(msg.status)) {
+                logger.warn(msg.toJson());
+            }
         }
-        afterReceive();
     }
-
-    public abstract void beforeReceive();
-
-    public abstract void afterReceive();
 }
