@@ -2,6 +2,8 @@ package jlu.evyde.gobang.Client.Controller;
 
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 
+import java.util.Map;
+
 /**
  * @author evyde
  */
@@ -39,6 +41,12 @@ public interface UIDriver {
      * @param color Color of chess who win.
      */
     void win(MQProtocol.Chess.Color color);
+
+    /**
+     * Let UI update score of gamer.
+     * @param score Score map that should be updated.
+     */
+    void updateScore(Map<MQProtocol.Chess.Color, Integer> score);
 
     /**
      * Recall last step.

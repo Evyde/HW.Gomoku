@@ -29,7 +29,11 @@ public class MQClient implements Serializable {
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof MQClient) {
-            return Objects.equals(this.token, ((MQClient) obj).token);
+            if (this.token != null && ((MQClient) obj).token != null) {
+                return Objects.equals(this.token, ((MQClient) obj).token);
+            } else {
+                return Objects.equals(this.webSocket, ((MQClient) obj).webSocket);
+            }
         } else if (obj instanceof UUID) {
             return Objects.equals(this.token, obj);
         } else if (obj instanceof WebSocket) {

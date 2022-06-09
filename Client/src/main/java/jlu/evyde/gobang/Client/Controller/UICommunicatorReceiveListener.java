@@ -11,7 +11,7 @@ public abstract class UICommunicatorReceiveListener implements CommunicatorRecei
     private static final Logger logger = LoggerFactory.getLogger(UICommunicatorReceiveListener.class);
 
     public UICommunicatorReceiveListener (UIDriver uid) {
-        this.group = MQProtocol.Group.WATCHER;
+        this.group = MQProtocol.Group.GAMER;
         this.uiDriver = uid;
     }
 
@@ -19,19 +19,17 @@ public abstract class UICommunicatorReceiveListener implements CommunicatorRecei
     public void doReceive(MQMessage msg) {
         if (msg != null) {
             if (msg.code != null) {
-                if (group.hasPrivilegeToDo(MQProtocol.Code.fromInteger(msg.code))) {
-                    if (MQProtocol.Code.PUT_CHESS.getCode().equals(msg.code)) {
-                        // Put chess
-                        if (msg.chess != null) {
-                            uiDriver.put(msg.chess);
-                        }
-                    } else if (MQProtocol.Code.RECALL.getCode().equals(msg.code)) {
-                        uiDriver.recall();
-                    } else if (MQProtocol.Code.WHITE_WIN.getCode().equals(msg.code) || MQProtocol.Code.BLACK_WIN.getCode().equals(msg.code)) {
-                        // Win!
-                        if (msg.chess != null && msg.chess.getColor() != null) {
-                            uiDriver.win(msg.chess.getColor());
-                        }
+                if (MQProtocol.Code.PUT_CHESS.getCode().equals(msg.code)) {
+                    // Put chess
+                    if (msg.chess != null) {
+                        uiDriver.put(msg.chess);
+                    }
+                } else if (MQProtocol.Code.RECALL.getCode().equals(msg.code)) {
+                    uiDriver.recall();
+                } else if (MQProtocol.Code.WHITE_WIN.getCode().equals(msg.code) || MQProtocol.Code.BLACK_WIN.getCode().equals(msg.code)) {
+                    // Win!
+                    if (msg.chess != null && msg.chess.getColor() != null) {
+                        uiDriver.win(msg.chess.getColor());
                     }
                 }
             }

@@ -16,7 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 
-import java.awt.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Thread.sleep;
 
@@ -24,7 +25,7 @@ import static java.lang.Thread.sleep;
 public class SwingUIDriver implements UIDriver {
     private OsThemeDetector detector = null;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private Communicator communicator;
+    private Map<MQProtocol.Chess.Color, Communicator> communicatorMap = new ConcurrentHashMap<>();
     private GameFrame gameFrame;
     private MQProtocol.Chess.Color gamerColor = SystemConfiguration.getFIRST();
 
@@ -55,7 +56,7 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void initMainFrame(Callback complete, Callback disposeListener) throws GobangException.FrameInitFailedException {
-        gameFrame = new MainFrame(disposeListener, this.communicator);
+        gameFrame = new MainFrame(disposeListener, this.communicatorMap);
         detector.registerListener(isDark -> {
             SwingUtilities.invokeLater(() -> {
                 if (isDark) {
@@ -118,8 +119,16 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void initCommunicator(Callback complete) throws GobangException.CommunicatorInitFailedException {
+        this.communicatorMap.put(MQProtocol.Chess.Color.WHITE, initColoredCommunicator(MQProtocol.Chess.Color.WHITE,
+                complete));
+        this.communicatorMap.put(MQProtocol.Chess.Color.BLACK, initColoredCommunicator(MQProtocol.Chess.Color.BLACK,
+                complete));
+
+    }
+
+    private Communicator initColoredCommunicator(MQProtocol.Chess.Color color, Callback complete) {
         try {
-            communicator = CommunicatorFactory.getWebSocketCommunicator();
+            Communicator communicator = CommunicatorFactory.getWebSocketCommunicator();
             communicator.addReceiveListener(new UICommunicatorReceiveListener(this) {
                 @Override
                 public void beforeReceive() {
@@ -142,13 +151,14 @@ public class SwingUIDriver implements UIDriver {
             MQMessage registerMessage = new MQMessage();
             registerMessage.token = MQProtocol.Group.GAMER.getInitializedUUID();
             registerMessage.group = MQProtocol.Group.GAMER;
-            registerMessage.chess = new MQProtocol.Chess(null, gamerColor);
-            communicator.register(registerMessage, complete, () -> {
-                logger.error("Register to MQ failed.");
+            registerMessage.chess = new MQProtocol.Chess(null, color);
+            communicator.register(registerMessage, complete , () -> {
+                logger.error("Register {} to MQ failed.", color);
                 throw new GobangException.UICommunicatorInitFailedException();
             });
+            return communicator;
         } catch (Exception e) {
-            logger.error("Failed to initialize communicator.");
+            logger.error("Failed to initialize {} communicator.", color);
             e.printStackTrace();
             throw new GobangException.UICommunicatorInitFailedException();
         }
@@ -175,6 +185,16 @@ public class SwingUIDriver implements UIDriver {
     }
 
     /**
+     * Let UI update score of gamer.
+     *
+     * @param score Score map that should be updated.
+     */
+    @Override
+    public void updateScore(Map<MQProtocol.Chess.Color, Integer> score) {
+        gameFrame.updateScore(score);
+    }
+
+    /**
      * Recall last step.
      */
     @Override
@@ -182,7 +202,15 @@ public class SwingUIDriver implements UIDriver {
         gameFrame.recall();
     }
 
-    public Communicator getCommunicator() {
-        return communicator;
+    public Communicator getBlackCommunicator() {
+        return communicatorMap.get(MQProtocol.Chess.Color.BLACK);
+    }
+
+    public Communicator getWhiteCommunicator() {
+        return communicatorMap.get(MQProtocol.Chess.Color.WHITE);
+    }
+
+    public Map<MQProtocol.Chess.Color, Communicator> getCommunicatorMap() {
+        return communicatorMap;
     }
 }

@@ -39,6 +39,9 @@ public class MQProtocol {
         BLACK_WIN(104, Privilege.SUPERVISOR),
         AUTH(105, Privilege.SUPERVISOR),
         REGISTER_FAILED(106, Privilege.SUPERVISOR),
+        DISCONNECT(107, Privilege.GUEST),
+        UPDATE_SCORE(108, Privilege.SUPERVISOR),
+        CLEAR_SCORE(109, Privilege.MACHINE),
         NO_OPERATION(0, Privilege.GUEST),
         ;
         private final Integer code;
@@ -65,6 +68,14 @@ public class MQProtocol {
                 return BLACK_WIN;
             } else if (AUTH.getCode().equals(code)) {
                 return AUTH;
+            } else if (REGISTER_FAILED.getCode().equals(code)) {
+                return REGISTER_FAILED;
+            } else if (DISCONNECT.getCode().equals(code)) {
+                return DISCONNECT;
+            } else if (UPDATE_SCORE.getCode().equals(code)) {
+                return UPDATE_SCORE;
+            } else if (CLEAR_SCORE.getCode().equals(code)) {
+                return CLEAR_SCORE;
             } else if (NO_OPERATION.getCode().equals(code)) {
                 return NO_OPERATION;
             }

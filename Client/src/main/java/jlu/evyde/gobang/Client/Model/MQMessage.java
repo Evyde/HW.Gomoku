@@ -6,6 +6,8 @@ import org.java_websocket.WebSocket;
 
 import java.awt.*;
 import java.io.Serializable;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ public class MQMessage implements Serializable {
     public MQProtocol.Group group;
     public UUID token;
     public String msg;
+    public EnumMap<MQProtocol.Chess.Color, Integer> score;
 
     private static final Gson parser = new Gson();
 

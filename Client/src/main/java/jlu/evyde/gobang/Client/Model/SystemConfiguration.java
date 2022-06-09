@@ -1,5 +1,4 @@
 package jlu.evyde.gobang.Client.Model;
-import jlu.evyde.gobang.Client.Controller.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +18,10 @@ public class SystemConfiguration {
     private static final Integer SLEEP_TIME = 200;
     private static final Integer BOARD_WIDTH = 15;
     private static final Integer BOARD_HEIGHT = 15;
+
+    private static final Double BOARD_SCALE = 0.8;
     private static final MQProtocol.Chess.Color FIRST = MQProtocol.Chess.Color.WHITE;
+    private static final Integer WIN_CONTINUOUS_NUM = 5;
 
     public static int getMQServerPort() {
         return MQ_SERVER_PORT;
@@ -52,5 +54,13 @@ public class SystemConfiguration {
 
     public static Integer getBoardHeight() {
         return BOARD_HEIGHT;
+    }
+
+    public static Double getBoardScale() {
+        return BOARD_SCALE;
+    }
+
+    public static Integer getWinContinuousNum() {
+        return WIN_CONTINUOUS_NUM;
     }
 }

@@ -4,6 +4,8 @@ import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.MQServerAddress;
 
+import java.util.EnumMap;
+
 public interface Communicator {
 
     /**
@@ -53,6 +55,17 @@ public interface Communicator {
     void win(MQProtocol.Chess.Color color);
 
     /**
+     * Clear score in server.
+     */
+    void clearScore();
+
+    /**
+     * Let UI update score of gamer.
+     * @param score Score map that should be updated.
+     */
+    void updateScore(EnumMap<MQProtocol.Chess.Color, Integer> score);
+
+    /**
      * Let logic server send redirect message to MQ server for authentication.
      * Should be called by Logic Server ONLY.
      * @param message Message to redirect.
@@ -72,4 +85,10 @@ public interface Communicator {
      * Destroy this communicator.
      */
     void close();
+
+    /**
+     * Let communicator send only to prevent from multiple win message.
+     * @param sendOnly
+     */
+    void setSendOnly(boolean sendOnly);
 }

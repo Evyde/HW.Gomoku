@@ -13,22 +13,26 @@
 
 ## 现阶段截图
 
-![五子棋界面截图/夜间模式](pics/ScreenShot0601.png)
+![五子棋界面截图/夜间模式](medias/ScreenShot0901.png)
 
-![五子棋界面截图/日间模式](pics/ScreenShot0602.png)
+![五子棋界面截图/日间模式](medias/ScreenShot0903.png)
 
-![控制台截图](pics/ScreenShot0801.png)
+![五子棋界面截图/日间获胜](medias/ScreenShot0904.png)
+
+![控制台截图](medias/ScreenShot0905.png)
+
+![录像](medias/ScreenShot0906.mp4)
 
 ## 功能
 
 拟实现以下功能，具体实现哪些视情况而定：
 
-- [ ] 下棋
+- [X] 下棋
 - [ ] 设置
 - [ ] AI
 - [ ] 登录
-- [ ] 对战
-- [ ] 动画
+- [X] 对战
+- [ ] 动画（算是实现了个鼠标移动的动画）
 
 - [X] i18n
 - [X] 日志
@@ -44,6 +48,21 @@
 总体来说，先用Java写一个基本的客户端出来，看时间再进行Web端的移植。
 
 客户端和逻辑服务端使用Socket/WebSocket通信（方便后续移植）。
+
+客户端架构分为三个部分，皆可独立启动：
+1. Message Queue Server消息服务器，用于鉴权和推送消息
+2. Logic Server逻辑服务器，用于判断UI操作是否合法，并执行游戏主逻辑
+3. UI Server(UI Driver)图形界面服务，用于解析服务器传来的消息并对UI进行操作
+4. UI Client图形界面客户端，用来处理用户点击事件、绘制棋子等
+
+理论上，只要实现UI Driver和UI Client，便可与其他两个服务无缝衔接，示例见上述视频，UI更改自
+[@MerlynAllen](https://github.com/MerlynAllen)的[gomoku-vue](https://github.com/MerlynAllen/gomoku-vue)，只对我的协议进行了适配，
+可以看到已经取得了较为不错的效果。且适配工作十分简单。
+
+通信暂时采用WebSocket，可能不会迁移到Socket了。
+
+关于协议的描述，详见[Model/MQProtocol.java](Client/src/main/java/jlu/evyde/gobang/Client/Model/MQProtocol.java)和
+[Model/MQMessage.java](Client/src/main/java/jlu/evyde/gobang/Client/Model/MQMessage.java)。
 
 ## 服务端
 

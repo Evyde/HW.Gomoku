@@ -1,24 +1,36 @@
 package jlu.evyde.gobang.Client.Model;
 
-import jlu.evyde.gobang.Client.Controller.*;
+import jlu.evyde.gobang.Client.Controller.Communicator;
+import jlu.evyde.gobang.Client.Controller.CommunicatorFactory;
+import jlu.evyde.gobang.Client.Controller.GobangException;
+import jlu.evyde.gobang.Client.Controller.LogicCommunicatorReceiveListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Thread.sleep;
 
 public class LogicServer {
-    private Communicator communicator = CommunicatorFactory.getWebSocketCommunicator();
-    private Logger logger = LoggerFactory.getLogger(LogicServer.class);
-    private List<MQProtocol.Chess.Color> gamer = new CopyOnWriteArrayList<>();
-    private MQProtocol.Chess.Color[][] board = new MQProtocol.Chess.Color
+    private final Communicator communicator = CommunicatorFactory.getWebSocketCommunicator();
+    private final Logger logger = LoggerFactory.getLogger(LogicServer.class);
+    private final Map<MQProtocol.Chess.Color, UUID> gamer = new ConcurrentHashMap<>();
+    private final EnumMap<MQProtocol.Chess.Color, Integer> score = new EnumMap<>(MQProtocol.Chess.Color.class);
+    private final MQProtocol.Chess.Color[][] board = new MQProtocol.Chess.Color
             [SystemConfiguration.getBoardHeight()][SystemConfiguration.getBoardWidth()];
-    private MQProtocol.Chess.Color nowMove = SystemConfiguration.getFIRST().equals(MQProtocol.Chess.Color.WHITE)?
-            MQProtocol.Chess.Color.WHITE: MQProtocol.Chess.Color.BLACK;
+    private MQProtocol.Chess.Color nowMove = SystemConfiguration.getFIRST().equals(MQProtocol.Chess.Color.WHITE) ?
+            MQProtocol.Chess.Color.WHITE : MQProtocol.Chess.Color.BLACK;
 
     public LogicServer() {
+        score.put(MQProtocol.Chess.Color.WHITE, 0);
+        score.put(MQProtocol.Chess.Color.BLACK, 0);
+
+        // check from file if score is already exists
+
+
         try {
             communicator.addReceiveListener(new LogicCommunicatorReceiveListener() {
                 @Override
@@ -26,7 +38,8 @@ public class LogicServer {
                     if (MQProtocol.Code.AUTH.getCode().equals(msg.code)) {
                         if (MQProtocol.Group.GAMER.equals(msg.group)) {
                             if (msg.chess != null && msg.chess.getColor() != null) {
-                                if (!gamer.contains(msg.chess.getColor())) {
+                                if (!gamer.containsKey(msg.chess.getColor())) {
+                                    gamer.put(msg.chess.getColor(), msg.token);
                                     registerSuccess(msg);
                                 } else {
                                     registerFailed(msg);
@@ -43,11 +56,17 @@ public class LogicServer {
                         if (msg.chess != null && msg.chess.getColor() != null) {
                             if (nowMove.equals(msg.chess.getColor())) {
                                 if (setChessAt(msg.chess)) {
-                                    nowMove = nowMove.equals(MQProtocol.Chess.Color.WHITE)?
-                                            MQProtocol.Chess.Color.BLACK: MQProtocol.Chess.Color.WHITE;
+                                    nowMove = nowMove.equals(MQProtocol.Chess.Color.WHITE) ?
+                                            MQProtocol.Chess.Color.BLACK : MQProtocol.Chess.Color.WHITE;
                                     communicator.put(msg.chess);
-                                    // isWin(msg.chess);
+                                    win(msg.chess);
                                 }
+                            }
+                        }
+                    } else if (MQProtocol.Code.DISCONNECT.getCode().equals(msg.code)) {
+                        for (MQProtocol.Chess.Color color : gamer.keySet()) {
+                            if (gamer.get(color).equals(UUID.fromString(msg.msg))) {
+                                gamer.remove(color);
                             }
                         }
                     }
@@ -77,7 +96,9 @@ public class LogicServer {
             registerMessage.group = MQProtocol.Group.LOGIC_SERVER;
             registerMessage.token = MQProtocol.Group.LOGIC_SERVER.getInitializedUUID();
             communicator.register(registerMessage,
-                    () -> { logger.info("Logic server started."); },
+                    () -> {
+                        logger.info("Logic server started.");
+                    },
                     () -> {
                         logger.error("Register to MQ failed.");
                         throw new GobangException.LogicCommunicatorInitFailedException();
@@ -141,14 +162,111 @@ public class LogicServer {
         return false;
     }
 
-    private void isWin(MQProtocol.Chess chess) {
+    private boolean isWin(MQProtocol.Chess chess) {
         try {
             sleep(SystemConfiguration.getSleepTime());
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         // judge if this chess wins
 
-        communicator.win(chess.getColor());
+        {
+            // check if 4 directions (8 sub directions) has 5 combo chess
+            // top -> down
+            int continuousNum = 0;
+            for (int y = chess.getPosition().y; y >= 0; y--) {
+                if (chess.getColor().equals(getChessAt(chess.getPosition().x, y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            for (int y = chess.getPosition().y; y < SystemConfiguration.getBoardHeight(); y++) {
+                if (chess.getColor().equals(getChessAt(chess.getPosition().x, y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            continuousNum -= 1;
+            if (continuousNum >= SystemConfiguration.getWinContinuousNum()) {
+                return true;
+            }
+
+            // left -> right
+            continuousNum = 0;
+            for (int x = chess.getPosition().x; x >= 0; x--) {
+                if (chess.getColor().equals(getChessAt(x, chess.getPosition().y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            for (int x = chess.getPosition().x; x < SystemConfiguration.getBoardWidth(); x++) {
+                if (chess.getColor().equals(getChessAt(x, chess.getPosition().y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            continuousNum -= 1;
+            if (continuousNum >= SystemConfiguration.getWinContinuousNum()) {
+                return true;
+            }
+
+            // left top -> right down
+            continuousNum = 0;
+            for (int x = chess.getPosition().x, y = chess.getPosition().y; x >= 0 && y >= 0; x--, y--) {
+                if (chess.getColor().equals(getChessAt(x, y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            for (int x = chess.getPosition().x, y = chess.getPosition().y;
+                 x < SystemConfiguration.getBoardWidth() && y < SystemConfiguration.getBoardWidth(); x++, y++) {
+                if (chess.getColor().equals(getChessAt(x, chess.getPosition().y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            continuousNum -= 1;
+            if (continuousNum >= SystemConfiguration.getWinContinuousNum()) {
+                return true;
+            }
+
+            // right top -> left down
+            continuousNum = 0;
+            for (int x = chess.getPosition().x, y = chess.getPosition().y;
+                 x < SystemConfiguration.getBoardWidth() && y >= 0; x++, y--) {
+                if (chess.getColor().equals(getChessAt(x, y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            for (int x = chess.getPosition().x, y = chess.getPosition().y;
+                 x >= 0 && y < SystemConfiguration.getBoardWidth(); x--, y++) {
+                if (chess.getColor().equals(getChessAt(x, chess.getPosition().y))) {
+                    continuousNum++;
+                } else {
+                    break;
+                }
+            }
+            continuousNum -= 1;
+            return continuousNum >= SystemConfiguration.getWinContinuousNum();
+        }
+    }
+
+    private void win(MQProtocol.Chess chess) {
+        // if win
+        if (isWin(chess)) {
+            // update score to color + 1
+            MQProtocol.Chess.Color winColor = chess.getColor();
+            score.put(winColor, score.getOrDefault(winColor, 0) + 1);
+            communicator.win(winColor);
+            // communicator.updateScore(score);
+        }
     }
 }

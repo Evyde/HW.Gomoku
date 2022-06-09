@@ -108,22 +108,11 @@ public class Main {
         }
         logger.warn("Stage 2: Initialize logic server.");
         initLogicServer();
-        // logger.warn("Stage 3: Initialize UI server.");
-        // initUIServer();
-//        try {
-//            sleep(5000);
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
-//        ((SwingUIDriver) uid).getCommunicator().put(new MQProtocol.Chess(new Point(), MQProtocol.Chess.Color.WHITE));
-        // logger.warn("Stage 4: Initialize main frame.");
-        // initMainFrame();
+        logger.warn("Stage 3: Initialize UI server.");
+        initUIServer();
+        logger.warn("Stage 4: Initialize main frame.");
+        initMainFrame();
         logger.warn("Initialized successfully.");
-        try {
-            sleep(1000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static void initUIServer() {

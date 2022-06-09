@@ -9,21 +9,23 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.Map;
 
 public abstract class GameFrame extends JFrame {
-    public Communicator communicator;
+    public Map<MQProtocol.Chess.Color, Communicator> communicatorMap;
     public MQProtocol.Chess.Color nowPlayer = SystemConfiguration.getFIRST();
-    public GameFrame(Communicator c) {
+    public GameFrame(Map<MQProtocol.Chess.Color, Communicator> communicatorMap) {
         super();
-        communicator = c;
+        this.communicatorMap = communicatorMap;
     }
     public abstract void put(MQProtocol.Chess c);
     public abstract void recall();
     public abstract void win(MQProtocol.Chess.Color c);
+    public abstract void updateScore(Map<MQProtocol.Chess.Color, Integer> score);
     public class PutChessListener implements MouseListener {
         @Override
         public void mouseClicked(MouseEvent e) {
-            communicator.put(new MQProtocol.Chess(toRelativePosition(e.getPoint()), getNowPlayer()));
+            communicatorMap.get(nowPlayer).put(new MQProtocol.Chess(toRelativePosition(e.getPoint()), getNowPlayer()));
             changePlayer();
         }
 
