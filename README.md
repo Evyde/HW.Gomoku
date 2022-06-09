@@ -21,7 +21,9 @@
 
 ![控制台截图](medias/ScreenShot0905.png)
 
-![录像](medias/ScreenShot0906.mp4)
+
+https://user-images.githubusercontent.com/9302540/172889849-01f7e236-21ac-4a06-bfe1-85e3eea3e08f.mp4
+
 
 ## 功能
 
