@@ -38,9 +38,9 @@ public interface UIDriver {
 
     /**
      * Tell UI which color of chess wins.
-     * @param color Color of chess who win.
+     * @param chess Chess who win.
      */
-    void win(MQProtocol.Chess.Color color);
+    void win(MQProtocol.Chess chess);
 
     /**
      * Let UI update score of gamer.
@@ -52,4 +52,25 @@ public interface UIDriver {
      * Recall last step.
      */
     void recall();
+
+    /**
+     * Tell UI draw.
+     */
+    void draw();
+
+    /**
+     * Let UI resets.
+     */
+    void reset();
+
+    /**
+     * Exit UI (Called by END_GAME).
+     */
+    void exit();
+
+    /**
+     * Let UI display incoming chat message.
+     * @param message Incoming chat message.
+     */
+    void talk(String message);
 }

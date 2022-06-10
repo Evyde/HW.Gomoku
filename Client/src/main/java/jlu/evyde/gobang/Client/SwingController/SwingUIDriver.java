@@ -177,11 +177,11 @@ public class SwingUIDriver implements UIDriver {
     /**
      * Tell UI which color of chess wins.
      *
-     * @param color Color of chess who win.
+     * @param chess Chess who win.
      */
     @Override
-    public void win(MQProtocol.Chess.Color color) {
-        gameFrame.win(color);
+    public void win(MQProtocol.Chess chess) {
+        gameFrame.win(chess);
     }
 
     /**
@@ -200,6 +200,42 @@ public class SwingUIDriver implements UIDriver {
     @Override
     public void recall() {
         gameFrame.recall();
+    }
+
+    /**
+     * Tell UI draw.
+     */
+    @Override
+    public void draw() {
+        gameFrame.draw();
+    }
+
+    /**
+     * Let UI resets.
+     */
+    @Override
+    public void reset() {
+        gameFrame.reset();
+        gameFrame.repaint();
+    }
+
+    /**
+     * Exit UI (Called by END_GAME).
+     */
+    @Override
+    public void exit() {
+        gameFrame.dispose();
+        System.exit(0);
+    }
+
+    /**
+     * Let UI display incoming chat message.
+     *
+     * @param message Incoming chat message.
+     */
+    @Override
+    public void talk(String message) {
+        gameFrame.talk(message);
     }
 
     public Communicator getBlackCommunicator() {

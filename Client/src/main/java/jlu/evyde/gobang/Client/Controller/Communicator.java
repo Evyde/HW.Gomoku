@@ -50,9 +50,9 @@ public interface Communicator {
 
     /**
      * Let the specific color of chess to win.
-     * @param color Chess color to win.
+     * @param chess Chess to win.
      */
-    void win(MQProtocol.Chess.Color color);
+    void win(MQProtocol.Chess chess);
 
     /**
      * Clear score in server.
@@ -91,4 +91,36 @@ public interface Communicator {
      * @param sendOnly
      */
     void setSendOnly(boolean sendOnly);
+
+    /**
+     * Let communicator read only to prevent from duplicated operation.
+     * @param readOnly
+     */
+    void setReadOnly(boolean readOnly);
+
+    /**
+     * Let this game draw.
+     */
+    void draw();
+
+    /**
+     * Restart this game.
+     */
+    void restartGame();
+
+    /**
+     * Reset all things except for score.
+     */
+    void reset();
+
+    /**
+     * Tell logic server to end game immediately.
+     */
+    void endGame();
+
+    /**
+     * Say something to every one.
+     * @param message Thing to talk.
+     */
+    void talk(String message);
 }

@@ -42,6 +42,11 @@ public class MQProtocol {
         DISCONNECT(107, Privilege.GUEST),
         UPDATE_SCORE(108, Privilege.SUPERVISOR),
         CLEAR_SCORE(109, Privilege.MACHINE),
+        DRAW(110, Privilege.SUPERVISOR),
+        RESTART_GAME(111, Privilege.MACHINE),
+        RESET(112, Privilege.SUPERVISOR),
+        END_GAME(113, Privilege.MACHINE),
+        TALK(114, Privilege.USER),
         NO_OPERATION(0, Privilege.GUEST),
         ;
         private final Integer code;
@@ -76,6 +81,16 @@ public class MQProtocol {
                 return UPDATE_SCORE;
             } else if (CLEAR_SCORE.getCode().equals(code)) {
                 return CLEAR_SCORE;
+            } else if (DRAW.getCode().equals(code)) {
+                return DRAW;
+            } else if (RESTART_GAME.getCode().equals(code)) {
+                return RESTART_GAME;
+            } else if (RESET.getCode().equals(code)) {
+                return RESET;
+            } else if (END_GAME.getCode().equals(code)) {
+                return END_GAME;
+            } else if (TALK.getCode().equals(code)) {
+                return TALK;
             } else if (NO_OPERATION.getCode().equals(code)) {
                 return NO_OPERATION;
             }

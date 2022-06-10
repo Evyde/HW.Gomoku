@@ -24,6 +24,7 @@ public class WebSocketCommunicator implements Communicator {
     private UUID communicatorToken = null;
     private Integer triedTimes = 0;
     private MQMessage registerMessage;
+    private boolean readOnly = false;
 
     /**
      * Connect to message queue server.
@@ -104,6 +105,9 @@ public class WebSocketCommunicator implements Communicator {
      */
     @Override
     public void produce(MQMessage message, Callback sendComplete, Callback sendError) {
+        if (readOnly) {
+            return;
+        }
         try {
             wsc.send(message, MQProtocol.Head.PRODUCE);
         } catch (Exception e) {
@@ -154,21 +158,21 @@ public class WebSocketCommunicator implements Communicator {
     /**
      * Let the specific color of chess to win.
      *
-     * @param color Chess color to win.
+     * @param chess Chess to win.
      */
     @Override
-    public void win(MQProtocol.Chess.Color color) {
+    public void win(MQProtocol.Chess chess) {
         MQMessage win = new MQMessage();
         win.group = id;
-        win.chess = new MQProtocol.Chess(new Point(), color);
+        win.chess = chess;
         win.status = MQProtocol.Status.SUCCESS;
-        win.code = color == MQProtocol.Chess.Color.WHITE ?
+        win.code = chess.getColor() == MQProtocol.Chess.Color.WHITE ?
                 MQProtocol.Code.WHITE_WIN.getCode() : MQProtocol.Code.BLACK_WIN.getCode();
         produce(win, () -> {
-                    logger.info("{} wins.", color.toString());
+                    logger.info("{} wins.", chess.getColor().toString());
                 },
                 () -> {
-                    logger.warn("{} wins failed.", color.toString());
+                    logger.warn("{} wins failed.", chess.getColor().toString());
                 });
     }
 
@@ -260,6 +264,106 @@ public class WebSocketCommunicator implements Communicator {
     @Override
     public void setSendOnly(boolean sendOnly) {
         this.sendOnly = sendOnly;
+    }
+
+    /**
+     * Let communicator read only to prevent from duplicated operation.
+     *
+     * @param readOnly
+     */
+    @Override
+    public void setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+    }
+
+    /**
+     * Let this game draw.
+     */
+    @Override
+    public void draw() {
+        MQMessage draw = new MQMessage();
+        draw.group = id;
+        draw.status = MQProtocol.Status.SUCCESS;
+        draw.code = MQProtocol.Code.DRAW.getCode();
+        produce(draw, () -> {
+                    logger.info("Drawn.");
+                },
+                () -> {
+                    logger.warn("Drew failed.");
+                });
+    }
+
+    /**
+     * Restart this game.
+     */
+    @Override
+    public void restartGame() {
+        MQMessage restart = new MQMessage();
+        restart.group = id;
+        restart.status = MQProtocol.Status.SUCCESS;
+        restart.code = MQProtocol.Code.RESTART_GAME.getCode();
+        setReadOnly(false);
+        setSendOnly(false);
+        produce(restart, () -> {
+                    logger.info("Restarted.");
+                },
+                () -> {
+                    logger.warn("Restart failed.");
+                });
+    }
+
+    /**
+     * Reset all things except for score.
+     */
+    @Override
+    public void reset() {
+        MQMessage reset = new MQMessage();
+        reset.group = id;
+        reset.status = MQProtocol.Status.SUCCESS;
+        reset.code = MQProtocol.Code.RESET.getCode();
+        produce(reset, () -> {
+                    logger.info("Reset.");
+                },
+                () -> {
+                    logger.warn("Reset failed.");
+                });
+    }
+
+    /**
+     * Tell logic server to end game immediately.
+     */
+    @Override
+    public void endGame() {
+        MQMessage endGame = new MQMessage();
+        endGame.group = id;
+        endGame.status = MQProtocol.Status.SUCCESS;
+        endGame.code = MQProtocol.Code.END_GAME.getCode();
+        produce(endGame, () -> {
+                    logger.info("End.");
+                },
+                () -> {
+                    logger.warn("End game failed.");
+                });
+    }
+
+    /**
+     * Say something to every one.
+     *
+     * @param message Thing to talk.
+     */
+    @Override
+    public void talk(String message) {
+        MQMessage talk = new MQMessage();
+        talk.group = id;
+        talk.status = MQProtocol.Status.SUCCESS;
+        talk.code = MQProtocol.Code.TALK.getCode();
+        talk.msg = message;
+        produce(talk, () -> {
+                    logger.info("Talk {}.", message);
+                },
+                () -> {
+                    logger.warn("Talk {} failed.", message);
+                });
     }
 
     private class RealWebSocketCommunicator extends WebSocketClient {

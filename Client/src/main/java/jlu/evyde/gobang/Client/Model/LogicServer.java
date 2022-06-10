@@ -7,9 +7,7 @@ import jlu.evyde.gobang.Client.Controller.LogicCommunicatorReceiveListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Thread.sleep;
@@ -18,9 +16,11 @@ public class LogicServer {
     private final Communicator communicator = CommunicatorFactory.getWebSocketCommunicator();
     private final Logger logger = LoggerFactory.getLogger(LogicServer.class);
     private final Map<MQProtocol.Chess.Color, UUID> gamer = new ConcurrentHashMap<>();
+    private final Stack<MQProtocol.Chess> steps = new Stack<>();
     private final EnumMap<MQProtocol.Chess.Color, Integer> score = new EnumMap<>(MQProtocol.Chess.Color.class);
     private final MQProtocol.Chess.Color[][] board = new MQProtocol.Chess.Color
             [SystemConfiguration.getBoardHeight()][SystemConfiguration.getBoardWidth()];
+    private Integer chessNums = 0;
     private MQProtocol.Chess.Color nowMove = SystemConfiguration.getFIRST().equals(MQProtocol.Chess.Color.WHITE) ?
             MQProtocol.Chess.Color.WHITE : MQProtocol.Chess.Color.BLACK;
 
@@ -56,10 +56,12 @@ public class LogicServer {
                         if (msg.chess != null && msg.chess.getColor() != null) {
                             if (nowMove.equals(msg.chess.getColor())) {
                                 if (setChessAt(msg.chess)) {
+                                    steps.push(msg.chess);
                                     nowMove = nowMove.equals(MQProtocol.Chess.Color.WHITE) ?
                                             MQProtocol.Chess.Color.BLACK : MQProtocol.Chess.Color.WHITE;
                                     communicator.put(msg.chess);
                                     win(msg.chess);
+                                    draw();
                                 }
                             }
                         }
@@ -68,6 +70,24 @@ public class LogicServer {
                             if (gamer.get(color).equals(UUID.fromString(msg.msg))) {
                                 gamer.remove(color);
                             }
+                        }
+                    } else if (MQProtocol.Code.RESTART_GAME.getCode().equals(msg.code)) {
+                        // should judge if win or draw
+                        // for (...)
+                        resetVariables();
+                        communicator.reset();
+                    } else if (MQProtocol.Code.CLEAR_SCORE.getCode().equals(msg.code)) {
+                        communicator.clearScore();
+                    } else if (MQProtocol.Code.END_GAME.getCode().equals(msg.code)) {
+                        communicator.endGame();
+                    } else if (MQProtocol.Code.TALK.getCode().equals(msg.code)) {
+                        communicator.talk(msg.msg);
+                    } else if (MQProtocol.Code.RECALL.getCode().equals(msg.code)) {
+                        if (!boardEmpty()) {
+                            clearChessAt(steps.pop());
+                            nowMove = nowMove.equals(MQProtocol.Chess.Color.WHITE) ?
+                                    MQProtocol.Chess.Color.BLACK : MQProtocol.Chess.Color.WHITE;
+                            communicator.recall();
                         }
                     }
                 }
@@ -157,9 +177,23 @@ public class LogicServer {
     private boolean setChessAt(Integer x, Integer y, MQProtocol.Chess.Color color) {
         if (this.getChessAt(x, y) == null) {
             this.board[y][x] = color;
+            chessNums++;
             return true;
         }
         return false;
+    }
+
+    private void clearChessAt(MQProtocol.Chess chess) {
+        clearChessAt(chess.getPosition().x, chess.getPosition().y);
+    }
+
+    private void clearChessAt(Integer x, Integer y) {
+        this.board[y][x] = null;
+        chessNums--;
+    }
+
+    private boolean isDraw() {
+        return chessNums >= SystemConfiguration.getBoardHeight() * SystemConfiguration.getBoardWidth();
     }
 
     private boolean isWin(MQProtocol.Chess chess) {
@@ -225,7 +259,7 @@ public class LogicServer {
             }
             for (int x = chess.getPosition().x, y = chess.getPosition().y;
                  x < SystemConfiguration.getBoardWidth() && y < SystemConfiguration.getBoardWidth(); x++, y++) {
-                if (chess.getColor().equals(getChessAt(x, chess.getPosition().y))) {
+                if (chess.getColor().equals(getChessAt(x, y))) {
                     continuousNum++;
                 } else {
                     break;
@@ -248,7 +282,7 @@ public class LogicServer {
             }
             for (int x = chess.getPosition().x, y = chess.getPosition().y;
                  x >= 0 && y < SystemConfiguration.getBoardWidth(); x--, y++) {
-                if (chess.getColor().equals(getChessAt(x, chess.getPosition().y))) {
+                if (chess.getColor().equals(getChessAt(x, y))) {
                     continuousNum++;
                 } else {
                     break;
@@ -265,8 +299,29 @@ public class LogicServer {
             // update score to color + 1
             MQProtocol.Chess.Color winColor = chess.getColor();
             score.put(winColor, score.getOrDefault(winColor, 0) + 1);
-            communicator.win(winColor);
+            communicator.win(chess);
             // communicator.updateScore(score);
         }
+    }
+
+    private void draw() {
+        if (isDraw()) {
+            communicator.draw();
+        }
+    }
+
+    private void resetVariables() {
+        gamer.clear();
+        // score.clear();
+        for (int y = 0; y < SystemConfiguration.getBoardHeight(); y++) {
+            Arrays.fill(board[y], null);
+        }
+        nowMove = SystemConfiguration.getFIRST().equals(MQProtocol.Chess.Color.WHITE) ?
+                MQProtocol.Chess.Color.WHITE : MQProtocol.Chess.Color.BLACK;
+        chessNums = 0;
+    }
+
+    private boolean boardEmpty() {
+        return steps.isEmpty();
     }
 }

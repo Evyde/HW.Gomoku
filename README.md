@@ -13,16 +13,17 @@
 
 ## 现阶段截图
 
-![五子棋界面截图/夜间模式](medias/ScreenShot0901.png)
+![五子棋界面截图/夜间模式](medias/ScreenShot1001.png)
 
-![五子棋界面截图/日间模式](medias/ScreenShot0903.png)
+![五子棋界面截图/夜间获胜](medias/ScreenShot1002.png)
 
-![五子棋界面截图/日间获胜](medias/ScreenShot0904.png)
+![五子棋界面截图/日间获胜](medias/ScreenShot1003.png)
 
 ![控制台截图](medias/ScreenShot0905.png)
 
 
 https://user-images.githubusercontent.com/9302540/172889849-01f7e236-21ac-4a06-bfe1-85e3eea3e08f.mp4
+https://github.com/Evyde/hw.gobang/blob/master/medias/Gobang1003.mp4?raw=true
 
 
 ## 功能
@@ -30,11 +31,12 @@ https://user-images.githubusercontent.com/9302540/172889849-01f7e236-21ac-4a06-b
 拟实现以下功能，具体实现哪些视情况而定：
 
 - [X] 下棋
-- [ ] 设置
+- [X] 设置
 - [ ] AI
 - [ ] 登录
 - [X] 对战
 - [ ] 动画（算是实现了个鼠标移动的动画）
+- [X] 联机
 
 - [X] i18n
 - [X] 日志
