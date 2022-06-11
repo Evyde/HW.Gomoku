@@ -1,86 +1,97 @@
-//package jlu.evyde.gobang.Client.Model;
-//
-//import jlu.evyde.gobang.Client.Controller.Utils;
-//import org.java_websocket.client.WebSocketClient;
-//import org.junit.Test;
-//import oshi.util.Util;
-//
-//import java.util.*;
-//
-//import static java.lang.Thread.sleep;
-//import static jlu.evyde.gobang.Client.Controller.Utils.*;
-//import static org.junit.Assert.*;
-//
-//public class TestWebSocketMQServer {
-//    @Test
-//    public void normalTest() {
-//        // construct 2 ui client, 1 logic server
-//        int port = Utils.generateRandomInt(8000, 65535);
-//
-//        MQBrokerServer server = startTestServer(port);
-//        List<MQMessage> ui1List = new ArrayList<>();
-//        List<MQMessage> ui2List = new ArrayList<>();
-//        List<MQMessage> logicList = new ArrayList<>();
-//
-//        try {
-//            sleep(500);
-//        } catch (Exception e) {
-//
-//        }
-//
-//        TestWebSocketClient ui1 = createTestClient(port, ui1List);
-//        TestWebSocketClient ui2 = createTestClient(port, ui2List);
-//        TestWebSocketClient logic = createTestClient(port, logicList);
-//        ui1.connect();
-//        ui2.connect();
-//        logic.connect();
-//
-//        try {
-//            sleep(500);
-//        } catch (Exception e) {
-//
-//        }
-//
-//        ui1.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.UI));
-//        ui2.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.UI));
-//        logic.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.LOGIC));
-//
-//        try {
-//            sleep(50);
-//        } catch (Exception e) {
-//
-//        }
-//        // ui1 send, all will receive.
-//        ui1.send(MQMessage.generateRandomMQMessage(MQProtocol.MQSource.UI), MQProtocol.Head.PRODUCE);
-//        try {
-//            sleep(50);
-//        } catch (Exception e) {
-//
-//        }
-//        assertEquals(ui1List.get(0), ui2List.get(0));
-//        assertEquals(ui2List.get(0), logicList.get(0));
-//
-//        // ui2 send, all will receive.
-//        ui2.send(MQMessage.generateRandomMQMessage(MQProtocol.MQSource.UI), MQProtocol.Head.PRODUCE);
-//        try {
-//            sleep(50);
-//        } catch (Exception e) {
-//
-//        }
-//        assertEquals(ui1List.get(1), ui2List.get(1));
-//        assertEquals(ui2List.get(1), logicList.get(1));
-//
-//        // logic send, except for logic, all will receive
-//        logic.send(MQMessage.generateRandomMQMessage(MQProtocol.MQSource.LOGIC), MQProtocol.Head.PRODUCE);
-//        try {
-//            sleep(50);
-//        } catch (Exception e) {
-//
-//        }
-//        assertEquals(ui1List.get(1), ui2List.get(1));
-//        assertEquals(2, logicList.size());
-//    }
-//
+package jlu.evyde.gobang.Client.Model;
+
+import jlu.evyde.gobang.Client.Controller.Utils;
+import org.java_websocket.client.WebSocketClient;
+import org.junit.Test;
+import oshi.util.Util;
+
+import java.util.*;
+
+import static java.lang.Thread.sleep;
+import static jlu.evyde.gobang.Client.Controller.Utils.*;
+import static org.junit.Assert.*;
+
+public class TestWebSocketMQServer {
+    @Test
+    public void normalTest() {
+        // construct 2 ui client, 1 logic server
+        int port = Utils.generateRandomInt(8000, 65535);
+
+        MQBrokerServer server = startTestServer(port);
+        List<MQMessage> ui1List = new ArrayList<>();
+        List<MQMessage> ui2List = new ArrayList<>();
+        List<MQMessage> logicList = new ArrayList<>();
+
+        try {
+            sleep(50);
+        } catch (Exception e) {
+
+        }
+
+        TestWebSocketClient ui1 = createTestClient(port, ui1List, MQProtocol.Group.GAMER);
+        TestWebSocketClient ui2 = createTestClient(port, ui2List, MQProtocol.Group.GAMER);
+        LogicServer logic = new LogicServer(logicList, port);
+
+        try {
+            sleep(50);
+        } catch (Exception e) {
+
+        }
+        ui1.connect();
+        ui2.connect();
+        try {
+            sleep(1000);
+        } catch (Exception e) {
+
+        }
+        ui1.send("");
+        ui2.send("");
+        try {
+            sleep(1000);
+        } catch (Exception e) {
+
+        }
+        assertEquals(ui1List.get(1), ui2List.get(1));
+        if (ui1List.get(0).chess.getColor().equals(SystemConfiguration.getFIRST())) {
+            // ui1 send, all will receive.
+            ui1.send(MQMessage.generateRandomMQMessage(MQProtocol.Group.GAMER, ui1List.get(0).chess.getColor()), MQProtocol.Head.PRODUCE);
+            try {
+                sleep(500);
+            } catch (Exception e) {
+
+            }
+            assertEquals(ui1List.get(2), ui2List.get(2));
+            assertEquals(ui1List.get(2).chess, logicList.get(1).chess);
+            assertEquals(ui1List.get(2).code, logicList.get(1).code);
+            assertEquals(ui1List.get(2).status, logicList.get(1).status);
+            assertNotEquals(ui1List.get(2), logicList.get(1));
+        } else {
+            // ui2 send, all will receive.
+            ui2.send(MQMessage.generateRandomMQMessage(MQProtocol.Group.GAMER, ui2List.get(0).chess.getColor()),
+                    MQProtocol.Head.PRODUCE);
+            try {
+                sleep(500);
+            } catch (Exception e) {
+
+            }
+            assertEquals(ui1List.get(2), ui2List.get(2));
+            assertEquals(ui2List.get(2).chess, logicList.get(1).chess);
+            assertEquals(ui2List.get(2).code, logicList.get(1).code);
+            assertEquals(ui2List.get(2).status, logicList.get(1).status);
+            assertNotEquals(ui2List.get(2), logicList.get(1));
+        }
+
+        // logic send, except for logic, all will receive
+        logic.send(MQMessage.generateRandomMQMessage(MQProtocol.Group.LOGIC_SERVER), MQProtocol.Head.PRODUCE);
+        try {
+            sleep(50);
+        } catch (Exception e) {
+
+        }
+        assertEquals(ui1List.get(1), ui2List.get(1));
+        assertEquals(2, logicList.size());
+    }
+
 //    @Test
 //    public void randomlyTest() {
 //        int port = Utils.generateRandomInt(8000, 65535);
@@ -88,7 +99,7 @@
 //        List<MQMessage> actualLogicMessageList = new LinkedList<>();
 //        List<MQMessage> expectedLogicMessageList = new LinkedList<>();
 //
-//        TestWebSocketClient logicServer = createTestClient(port, actualLogicMessageList);
+//        TestWebSocketClient logicServer = createTestClient(port, actualLogicMessageList, MQProtocol.Group.LOGIC_SERVER);
 //
 //        HashSet<TestWebSocketClient> uis = new HashSet<>();
 //        List<MQMessage> expectedUIMessageList = new LinkedList<>();
@@ -110,13 +121,6 @@
 //
 //        }
 //
-//        logicServer.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.LOGIC));
-//
-//        try {
-//            Util.sleep(1000);
-//        } catch (Exception e) {
-//
-//        }
 //
 //        int times = 500;
 //
@@ -126,14 +130,8 @@
 //                System.err.println("Register new UI.");
 //                // Register a new UI
 //                List<MQMessage> uil = new LinkedList<>();
-//                TestWebSocketClient ui = createTestClient(port, uil);
+//                TestWebSocketClient ui = createTestClient(port, uil, MQProtocol.Group.GAMER);
 //                ui.connect();
-//                try {
-//                    Util.sleep(50);
-//                    ui.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.UI));
-//                } catch (Exception e) {
-//                    continue;
-//                }
 //                int i = 0;
 //                while (uil.size() != expectedUIMessageList.size()) {
 //                    try {
@@ -160,7 +158,7 @@
 //                if (uis.isEmpty()) {
 //                    continue;
 //                }
-//                MQMessage m = MQMessage.generateRandomMQMessage(MQProtocol.MQSource.UI);
+//                MQMessage m = MQMessage.generateRandomMQMessage(MQProtocol.Group.GAMER);
 //                expectedUIMessageList.add(m);
 //                expectedLogicMessageList.add(m);
 //                for (TestWebSocketClient c: uis) {
@@ -183,7 +181,7 @@
 //            } else if (choice == 2) {
 //                // Produce from Logic
 //                System.err.println("Produce from logic.");
-//                MQMessage m = MQMessage.generateRandomMQMessage(MQProtocol.MQSource.LOGIC);
+//                MQMessage m = MQMessage.generateRandomMQMessage(MQProtocol.Group.LOGIC_SERVER);
 //                expectedUIMessageList.add(m);
 //                if (!logicServer.isClosed()) {
 //                    logicServer.send(m, MQProtocol.Head.PRODUCE);
@@ -208,12 +206,12 @@
 //                if (logicServer != null && !logicServer.isClosed()) {
 //                    logicServer.close();
 //                    actualLogicMessageList.clear();
-//                    logicServer = createTestClient(port, actualLogicMessageList);
+//                    logicServer = createTestClient(port, actualLogicMessageList, MQProtocol.Group.LOGIC_SERVER);
 //                    try {
 //                        Util.sleep(50);
 //                        logicServer.connect();
 //                        Util.sleep(100);
-//                        logicServer.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.LOGIC));
+//                        //logicServer.send(MQMessage.constructRegisterMessage(MQProtocol.MQSource.LOGIC));
 //                        Util.sleep(100);
 //                    } catch (Exception e) {
 //                        continue;
@@ -241,4 +239,4 @@
 //
 //        closeServer(mbs);
 //    }
-//}
+}
