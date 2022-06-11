@@ -1,19 +1,21 @@
 package jlu.evyde.gobang.Client.Controller;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import jlu.evyde.gobang.Client.Model.*;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 public class Utils {
+    private static final Logger logger = LoggerFactory.getLogger(Utils.class);
     public static String toUTF8String(String s) {
         String ss = "";
         try {
@@ -23,6 +25,77 @@ public class Utils {
         }
         System.out.println(ss);
         return ss;
+    }
+
+    public static String readLineFromFile(String filename) {
+        try {
+            BufferedReader file = new BufferedReader(new FileReader(getFullFilePath(filename)));
+            return file.readLine();
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    public static boolean isFileExists(String filename) {
+        return new File(filename).exists();
+    }
+
+    public static String getFullFilePath(String filename) {
+        String cwd = System.getProperty("user.dir");
+        return cwd + "/" + filename;
+    }
+
+    public static EnumMap<MQProtocol.Chess.Color, Integer> generateEmptyScoreMap() {
+        EnumMap<MQProtocol.Chess.Color, Integer> score = new EnumMap<>(MQProtocol.Chess.Color.class);
+        for (MQProtocol.Chess.Color c: MQProtocol.Chess.Color.values()) {
+            score.put(c, 0);
+        }
+        return score;
+    }
+
+    public static void createScoreFileWithDefaultValues(String filename) {
+        MQMessage m = new MQMessage();
+
+        m.score = generateEmptyScoreMap();
+        try {
+            Writer writer = new FileWriter(filename);
+            new GsonBuilder().enableComplexMapKeySerialization().create().toJson(m, writer);
+            writer.close();
+        } catch (IOException e) {
+            logger.error(e.toString());
+            e.printStackTrace();
+        }
+    }
+
+    public static void saveScoreToFile(String filename, EnumMap<MQProtocol.Chess.Color, Integer> score) {
+        if (!isFileExists(getFullFilePath(filename))) {
+            logger.warn("Score file not found, create.");
+            createScoreFileWithDefaultValues(getFullFilePath(filename));
+        }
+        try {
+            MQMessage m = new MQMessage();
+            m.score = score;
+            Writer writer = new FileWriter(filename);
+            new GsonBuilder().enableComplexMapKeySerialization().create().toJson(m, writer);
+            writer.close();
+        } catch (IOException e) {
+            logger.error("Saving score to file error: {}.", e.toString());
+            e.printStackTrace();
+        }
+    }
+
+    public static EnumMap<MQProtocol.Chess.Color, Integer> readScoreFromJson(String json) {
+        Gson parser = new GsonBuilder().enableComplexMapKeySerialization().create();
+        return parser.fromJson(json, MQMessage.class).score;
+    }
+
+    public static EnumMap<MQProtocol.Chess.Color, Integer> readScoreFromFile(String filename) {
+        Gson parser = new GsonBuilder().enableComplexMapKeySerialization().create();
+        try {
+            return parser.fromJson(new FileReader(getFullFilePath(filename)), MQMessage.class).score;
+        } catch (Exception e) {
+            return generateEmptyScoreMap();
+        }
     }
 
     public static int generateRandomInt(int min, int max) {

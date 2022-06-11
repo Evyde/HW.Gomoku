@@ -1,4 +1,4 @@
-name: Gobang Test CI
+name: Gobang CI
 
 on:
   push:
@@ -17,5 +17,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'adopt'
-      - name: Build with Maven
+      - name: Test with Maven
         run: mvn test
+      - name: Build JAR with Maven
+        run: mvn install

@@ -84,10 +84,12 @@ public class Main {
                 while (locked) {
                     if (counter-- <= 0) {
                         locked = false;
+                        System.exit(0);
                         sleep(SystemConfiguration.getSleepTime());
                     }
                     Thread.onSpinWait();
                 }
+                System.exit(0);
             } catch (Exception e) {
                 e.printStackTrace();
                 logger.error("Failed to exit, exit anyway.");
@@ -101,17 +103,18 @@ public class Main {
     public static void main(String[] args) {
         logger.info("Starting client.");
 
-        logger.warn("Stage 1: Initialize message queue server.");
+        logger.warn("Stage 1: Initialize main frame.");
+        initMainFrame();
+        logger.warn("Stage 2: Initialize message queue server.");
         initMQServer();
         while (stageLock) {
             Thread.onSpinWait();
         }
-        logger.warn("Stage 2: Initialize logic server.");
+        logger.warn("Stage 3: Initialize logic server.");
         initLogicServer();
-        logger.warn("Stage 3: Initialize UI server.");
+
+        logger.warn("Stage 4: Initialize UI server.");
         initUIServer();
-        logger.warn("Stage 4: Initialize main frame.");
-        initMainFrame();
         logger.warn("Initialized successfully.");
     }
 

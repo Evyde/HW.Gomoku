@@ -1,9 +1,6 @@
 package jlu.evyde.gobang.Client.Model;
 
-import jlu.evyde.gobang.Client.Controller.Communicator;
-import jlu.evyde.gobang.Client.Controller.CommunicatorFactory;
-import jlu.evyde.gobang.Client.Controller.GobangException;
-import jlu.evyde.gobang.Client.Controller.LogicCommunicatorReceiveListener;
+import jlu.evyde.gobang.Client.Controller.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +14,7 @@ public class LogicServer {
     private final Logger logger = LoggerFactory.getLogger(LogicServer.class);
     private final Map<MQProtocol.Chess.Color, UUID> gamer = new ConcurrentHashMap<>();
     private final Stack<MQProtocol.Chess> steps = new Stack<>();
-    private final EnumMap<MQProtocol.Chess.Color, Integer> score = new EnumMap<>(MQProtocol.Chess.Color.class);
+    private final EnumMap<MQProtocol.Chess.Color, Integer> score;
     private final MQProtocol.Chess.Color[][] board = new MQProtocol.Chess.Color
             [SystemConfiguration.getBoardHeight()][SystemConfiguration.getBoardWidth()];
     private Integer chessNums = 0;
@@ -25,11 +22,9 @@ public class LogicServer {
             MQProtocol.Chess.Color.WHITE : MQProtocol.Chess.Color.BLACK;
 
     public LogicServer() {
-        score.put(MQProtocol.Chess.Color.WHITE, 0);
-        score.put(MQProtocol.Chess.Color.BLACK, 0);
 
-        // check from file if score is already exists
-
+        // read from file if score is already exists
+        score = Utils.readScoreFromFile(SystemConfiguration.getScoreFileName());
 
         try {
             communicator.addReceiveListener(new LogicCommunicatorReceiveListener() {
@@ -72,12 +67,13 @@ public class LogicServer {
                             }
                         }
                     } else if (MQProtocol.Code.RESTART_GAME.getCode().equals(msg.code)) {
-                        // should judge if win or draw
+                        // should judge if win or draw?
                         // for (...)
                         resetVariables();
                         communicator.reset();
                     } else if (MQProtocol.Code.CLEAR_SCORE.getCode().equals(msg.code)) {
                         communicator.clearScore();
+                        updateAndSaveScore(MQProtocol.Chess.Color.WHITE, null);
                     } else if (MQProtocol.Code.END_GAME.getCode().equals(msg.code)) {
                         communicator.endGame();
                     } else if (MQProtocol.Code.TALK.getCode().equals(msg.code)) {
@@ -118,6 +114,7 @@ public class LogicServer {
             communicator.register(registerMessage,
                     () -> {
                         logger.info("Logic server started.");
+                        communicator.updateScore(score);
                     },
                     () -> {
                         logger.error("Register to MQ failed.");
@@ -128,6 +125,17 @@ public class LogicServer {
             logger.error("Logic server may start failed.");
             throw new GobangException.LogicCommunicatorInitFailedException();
         }
+    }
+
+    private void updateAndSaveScore(MQProtocol.Chess.Color color, Integer score) {
+        if (score == null) {
+            for (MQProtocol.Chess.Color c: MQProtocol.Chess.Color.values()) {
+                this.score.put(c, 0);
+            }
+        } else {
+            this.score.put(color, score);
+        }
+        Utils.saveScoreToFile(SystemConfiguration.getScoreFileName(), this.score);
     }
 
     private void registerSuccess(MQMessage msg) {
@@ -298,9 +306,9 @@ public class LogicServer {
         if (isWin(chess)) {
             // update score to color + 1
             MQProtocol.Chess.Color winColor = chess.getColor();
-            score.put(winColor, score.getOrDefault(winColor, 0) + 1);
+            updateAndSaveScore(winColor, score.getOrDefault(winColor, 0) + 1);
             communicator.win(chess);
-            // communicator.updateScore(score);
+            communicator.updateScore(score);
         }
     }
 

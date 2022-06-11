@@ -1,5 +1,7 @@
 package jlu.evyde.gobang.Client.Model;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.awt.*;
 import java.io.Serializable;
 import java.util.ResourceBundle;
@@ -112,7 +114,9 @@ public class MQProtocol {
         private final Color color;
 
         public enum Color {
+            @SerializedName("WHITE")
             WHITE,
+            @SerializedName("BLACK")
             BLACK;
 
             @Override

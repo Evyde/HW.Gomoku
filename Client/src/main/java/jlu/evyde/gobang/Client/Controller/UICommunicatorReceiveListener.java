@@ -42,11 +42,18 @@ public abstract class UICommunicatorReceiveListener implements CommunicatorRecei
                 } else if (MQProtocol.Code.CLEAR_SCORE.getCode().equals(msg.code)) {
                     Map<MQProtocol.Chess.Color, Integer> clearScoreMap =
                             new EnumMap<MQProtocol.Chess.Color, Integer>(MQProtocol.Chess.Color.class);
+                    for (MQProtocol.Chess.Color c: MQProtocol.Chess.Color.values()) {
+                        clearScoreMap.put(c, 0);
+                    }
                     uiDriver.updateScore(clearScoreMap);
                 } else if (MQProtocol.Code.END_GAME.getCode().equals(msg.code)) {
                     uiDriver.exit();
                 } else if (MQProtocol.Code.TALK.getCode().equals(msg.code)) {
                     uiDriver.talk(msg.msg);
+                } else if (MQProtocol.Code.UPDATE_SCORE.getCode().equals(msg.code)) {
+                    if (msg.score != null) {
+                        uiDriver.updateScore(msg.score);
+                    }
                 }
             }
             if (MQProtocol.Status.FAILED.equals(msg.status)) {

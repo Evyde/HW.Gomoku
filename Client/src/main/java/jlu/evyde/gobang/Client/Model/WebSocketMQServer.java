@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static java.lang.Thread.sleep;
+
 // TODO: Fix cannot remove from Guest error.
 public class WebSocketMQServer implements MQBrokerServer {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -33,6 +35,7 @@ public class WebSocketMQServer implements MQBrokerServer {
             throws GobangException.MQServerStartFailedException {
         try {
             wss = new RealWebSocketMQServer(msa, startComplete);
+            wss.setReuseAddr(true);
             wss.start();
         } catch (Exception e) {
             logger.error(e.toString());
@@ -53,8 +56,11 @@ public class WebSocketMQServer implements MQBrokerServer {
         beforeClose.run();
         try {
             wss.stop();
+            wss.stop(SystemConfiguration.getSleepTime());
+            sleep((long) SystemConfiguration.getSleepTime() * SystemConfiguration.getMaxRetryTime());
         } catch (InterruptedException ie) {
             logger.error(ie.toString());
+            System.exit(5);
             throw new GobangException.MQServerClosedFailedException();
         }
         afterClose.run();
@@ -393,7 +399,13 @@ public class WebSocketMQServer implements MQBrokerServer {
                     webSocket.getRemoteSocketAddress(),
                     e.toString()
             );
-            System.exit(5);
+            e.printStackTrace();
+            try {
+                this.stop();
+            } catch (InterruptedException ex) {
+                e.printStackTrace();
+            }
+            // System.exit(5);
         }
 
         @Override

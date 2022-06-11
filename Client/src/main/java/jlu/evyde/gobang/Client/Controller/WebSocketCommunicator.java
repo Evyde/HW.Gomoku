@@ -25,6 +25,7 @@ public class WebSocketCommunicator implements Communicator {
     private Integer triedTimes = 0;
     private MQMessage registerMessage;
     private boolean readOnly = false;
+    private Callback registerSuccessCallback;
 
     /**
      * Connect to message queue server.
@@ -63,6 +64,7 @@ public class WebSocketCommunicator implements Communicator {
     public void register(MQMessage message, Callback success, Callback failed) {
         this.id = message.group;
         this.registerMessage = message;
+        registerSuccessCallback = success;
         if (SystemConfiguration.getMaxRetryTime().equals(this.triedTimes)) {
             failed.run();
             logger.error("Register reached in max retry time, abandon.");
@@ -88,9 +90,6 @@ public class WebSocketCommunicator implements Communicator {
             logger.error("Register error, retry {} times.", SystemConfiguration.getMaxRetryTime() - this.triedTimes);
             this.triedTimes++;
             register(message, success, failed);
-        }
-        if (this.triedTimes == 0) {
-            success.run();
         }
         this.triedTimes = 0;
     }
@@ -205,9 +204,6 @@ public class WebSocketCommunicator implements Communicator {
         scoreMessage.status = MQProtocol.Status.SUCCESS;
         scoreMessage.code = MQProtocol.Code.UPDATE_SCORE.getCode();
         scoreMessage.score = score;
-        logger.error(score.toString());
-        logger.error(scoreMessage.toString());
-        logger.error(scoreMessage.toJson());
         produce(scoreMessage, () -> {
                     logger.info("Clear all score.");
                 },
@@ -392,6 +388,9 @@ public class WebSocketCommunicator implements Communicator {
             if (MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code)) {
                 if (m.token != null) {
                     communicatorToken = m.token;
+                    if (registerSuccessCallback != null) {
+                        registerSuccessCallback.run();
+                    }
                 } else {
                     System.err.println("Server returns wrong token!");
                 }

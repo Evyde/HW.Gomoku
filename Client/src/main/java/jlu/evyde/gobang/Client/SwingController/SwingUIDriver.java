@@ -28,6 +28,7 @@ public class SwingUIDriver implements UIDriver {
     private Map<MQProtocol.Chess.Color, Communicator> communicatorMap = new ConcurrentHashMap<>();
     private GameFrame gameFrame;
     private MQProtocol.Chess.Color gamerColor = SystemConfiguration.getFIRST();
+    private Callback disposeListener;
 
     public SwingUIDriver() {
         try {
@@ -57,6 +58,7 @@ public class SwingUIDriver implements UIDriver {
     @Override
     public void initMainFrame(Callback complete, Callback disposeListener) throws GobangException.FrameInitFailedException {
         gameFrame = new MainFrame(disposeListener, this.communicatorMap);
+        this.disposeListener = disposeListener;
         detector.registerListener(isDark -> {
             SwingUtilities.invokeLater(() -> {
                 if (isDark) {
@@ -123,6 +125,8 @@ public class SwingUIDriver implements UIDriver {
                 complete));
         this.communicatorMap.put(MQProtocol.Chess.Color.BLACK, initColoredCommunicator(MQProtocol.Chess.Color.BLACK,
                 complete));
+        // let one of communicator to be sent only because it may cause win twice
+        this.communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
 
     }
 
@@ -224,7 +228,7 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void exit() {
-        gameFrame.dispose();
+        ((MainFrame) gameFrame).dispose(this.disposeListener);
         System.exit(0);
     }
 

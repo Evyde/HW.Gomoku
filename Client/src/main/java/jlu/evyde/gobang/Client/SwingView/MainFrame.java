@@ -21,11 +21,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.text.MessageFormat;
-import java.util.Deque;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -54,8 +51,6 @@ public class MainFrame extends GameFrame {
         super(uiCommunicatorMap);
 
         this.communicatorMap = uiCommunicatorMap;
-        // let one of communicator to be sent only because it may cause win twice
-        this.communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
         // save source print stream
         stdout = System.out;
         stderr = System.err;
@@ -223,7 +218,7 @@ public class MainFrame extends GameFrame {
         s.weighty = 1;
         controlPanel.add(scorePanel, s);
 
-        whiteScore = new JLabel("1", SwingConstants.CENTER);
+        whiteScore = new JLabel("0", SwingConstants.CENTER);
         whiteScore.putClientProperty("FlatLaf.styleClass", "h00");
         s = new GridBagConstraints();
         s.gridx = 0;
@@ -234,7 +229,7 @@ public class MainFrame extends GameFrame {
         s.weighty = 1;
         scorePanel.add(whiteScore, s);
 
-        blackScore = new JLabel("3", SwingConstants.CENTER);
+        blackScore = new JLabel("0", SwingConstants.CENTER);
         blackScore.putClientProperty("FlatLaf.styleClass", "h00");
         s = new GridBagConstraints();
         s.gridx = 3;
@@ -366,15 +361,11 @@ public class MainFrame extends GameFrame {
 
             {
                 try {
-                    backgroundImage = ImageIO.read(new File("Client/src/main/resources/background.png"));
-                    chessImage.put(MQProtocol.Chess.Color.WHITE, new FlatSVGIcon(new File("Client/src/main/resources" +
-                            "/circle-light.svg")));
-                    chessImage.put(MQProtocol.Chess.Color.BLACK, new FlatSVGIcon(new File("Client/src/main/resources" +
-                            "/circle-dark.svg")));
-                    winChessImage.put(MQProtocol.Chess.Color.WHITE, new FlatSVGIcon(new File("Client/src/main" +
-                            "/resources/circle-light-winner.svg")));
-                    winChessImage.put(MQProtocol.Chess.Color.BLACK, new FlatSVGIcon(new File("Client/src/main" +
-                            "/resources/circle-dark-winner.svg")));
+                    backgroundImage = ImageIO.read(SystemConfiguration.getBackgroundImage());
+                    chessImage.put(MQProtocol.Chess.Color.WHITE, new FlatSVGIcon(SystemConfiguration.getWhiteChess()));
+                    chessImage.put(MQProtocol.Chess.Color.BLACK, new FlatSVGIcon(SystemConfiguration.getBlackChess()));
+                    winChessImage.put(MQProtocol.Chess.Color.WHITE, new FlatSVGIcon(SystemConfiguration.getWhiteWinnerChess()));
+                    winChessImage.put(MQProtocol.Chess.Color.BLACK, new FlatSVGIcon(SystemConfiguration.getBlackWinnerChess()));
                 } catch (IOException ioe) {
                     logger.error("Open image failed.");
                 }
@@ -749,14 +740,16 @@ public class MainFrame extends GameFrame {
         logger.warn("{} wins!", c.getColor().toString());
         winningChess = c;
         game.repaint();
-        showWinDialog(c.getColor());
         setNowPlayLock(true);
+        showWinDialog(c.getColor());
     }
 
     @Override
     public void updateScore(Map<MQProtocol.Chess.Color, Integer> score) {
         this.whiteScore.setText(score.get(MQProtocol.Chess.Color.WHITE).toString());
         this.blackScore.setText(score.get(MQProtocol.Chess.Color.BLACK).toString());
+        blackScore.repaint();
+        whiteScore.repaint();
     }
 
     @Override
@@ -861,7 +854,7 @@ public class MainFrame extends GameFrame {
         Integer choice = JOptionPane.showOptionDialog(
                 window,
                 message,
-                "提示",
+                bundle.getString("ALERT"),
                 JOptionPane.YES_NO_CANCEL_OPTION,
                 JOptionPane.INFORMATION_MESSAGE,
                 null,
@@ -879,6 +872,7 @@ public class MainFrame extends GameFrame {
             // start next game
             communicatorMap.get(MQProtocol.Chess.Color.WHITE).restartGame();
             communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
+            setNowPlayLock(false);
         }
     }
 

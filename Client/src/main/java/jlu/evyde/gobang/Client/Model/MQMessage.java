@@ -1,13 +1,12 @@
 package jlu.evyde.gobang.Client.Model;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import jlu.evyde.gobang.Client.Controller.Utils;
-import org.java_websocket.WebSocket;
 
 import java.awt.*;
 import java.io.Serializable;
 import java.util.EnumMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -23,7 +22,7 @@ public class MQMessage implements Serializable {
     public String msg;
     public EnumMap<MQProtocol.Chess.Color, Integer> score;
 
-    private static final Gson parser = new Gson();
+    private static final Gson parser = new GsonBuilder().enableComplexMapKeySerialization().create();
 
     @Deprecated
     public static String constructConsumeMessage(MQProtocol.Group group) {
@@ -88,6 +87,7 @@ public class MQMessage implements Serializable {
     }
 
     public String toJson() {
+        parser.newBuilder().enableComplexMapKeySerialization();
         return toString();
     }
 
