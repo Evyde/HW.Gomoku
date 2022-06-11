@@ -5,6 +5,7 @@ import com.formdev.flatlaf.FlatIntelliJLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.jthemedetecor.OsThemeDetector;
 import jlu.evyde.gobang.Client.Controller.*;
+import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.MQServerAddress;
 import jlu.evyde.gobang.Client.Model.SystemConfiguration;
@@ -15,14 +16,19 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import static java.lang.Thread.sleep;
 
 
 public class SwingUIDriver implements UIDriver {
     private OsThemeDetector detector = null;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private Communicator communicator;
+    private Map<MQProtocol.Chess.Color, Communicator> communicatorMap = new ConcurrentHashMap<>();
     private GameFrame gameFrame;
+    private MQProtocol.Chess.Color gamerColor = SystemConfiguration.getFIRST();
+    private Callback disposeListener;
 
     public SwingUIDriver() {
         try {
@@ -51,7 +57,8 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void initMainFrame(Callback complete, Callback disposeListener) throws GobangException.FrameInitFailedException {
-        gameFrame = new MainFrame(disposeListener, this.communicator);
+        gameFrame = new MainFrame(disposeListener, this.communicatorMap);
+        this.disposeListener = disposeListener;
         detector.registerListener(isDark -> {
             SwingUtilities.invokeLater(() -> {
                 if (isDark) {
@@ -114,8 +121,18 @@ public class SwingUIDriver implements UIDriver {
      */
     @Override
     public void initCommunicator(Callback complete) throws GobangException.CommunicatorInitFailedException {
+        this.communicatorMap.put(MQProtocol.Chess.Color.WHITE, initColoredCommunicator(MQProtocol.Chess.Color.WHITE,
+                complete));
+        this.communicatorMap.put(MQProtocol.Chess.Color.BLACK, initColoredCommunicator(MQProtocol.Chess.Color.BLACK,
+                complete));
+        // let one of communicator to be sent only because it may cause win twice
+        this.communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
+
+    }
+
+    private Communicator initColoredCommunicator(MQProtocol.Chess.Color color, Callback complete) {
         try {
-            communicator = CommunicatorFactory.getWebSocketCommunicator();
+            Communicator communicator = CommunicatorFactory.getWebSocketCommunicator();
             communicator.addReceiveListener(new UICommunicatorReceiveListener(this) {
                 @Override
                 public void beforeReceive() {
@@ -135,12 +152,17 @@ public class SwingUIDriver implements UIDriver {
                 }
                 sleep(SystemConfiguration.getSleepTime());
             }
-            communicator.register(MQProtocol.MQSource.UI, complete, () -> {
-                logger.error("Register to MQ failed.");
+            MQMessage registerMessage = new MQMessage();
+            registerMessage.token = MQProtocol.Group.GAMER.getInitializedUUID();
+            registerMessage.group = MQProtocol.Group.GAMER;
+            registerMessage.chess = new MQProtocol.Chess(null, color);
+            communicator.register(registerMessage, complete , () -> {
+                logger.error("Register {} to MQ failed.", color);
                 throw new GobangException.UICommunicatorInitFailedException();
             });
+            return communicator;
         } catch (Exception e) {
-            logger.error("Failed to initialize communicator.");
+            logger.error("Failed to initialize {} communicator.", color);
             e.printStackTrace();
             throw new GobangException.UICommunicatorInitFailedException();
         }
@@ -159,11 +181,21 @@ public class SwingUIDriver implements UIDriver {
     /**
      * Tell UI which color of chess wins.
      *
-     * @param color Color of chess who win.
+     * @param chess Chess who win.
      */
     @Override
-    public void win(MQProtocol.Chess.Color color) {
-        gameFrame.win(color);
+    public void win(MQProtocol.Chess chess) {
+        gameFrame.win(chess);
+    }
+
+    /**
+     * Let UI update score of gamer.
+     *
+     * @param score Score map that should be updated.
+     */
+    @Override
+    public void updateScore(Map<MQProtocol.Chess.Color, Integer> score) {
+        gameFrame.updateScore(score);
     }
 
     /**
@@ -174,4 +206,51 @@ public class SwingUIDriver implements UIDriver {
         gameFrame.recall();
     }
 
+    /**
+     * Tell UI draw.
+     */
+    @Override
+    public void draw() {
+        gameFrame.draw();
+    }
+
+    /**
+     * Let UI resets.
+     */
+    @Override
+    public void reset() {
+        gameFrame.reset();
+        gameFrame.repaint();
+    }
+
+    /**
+     * Exit UI (Called by END_GAME).
+     */
+    @Override
+    public void exit() {
+        ((MainFrame) gameFrame).dispose(this.disposeListener);
+        System.exit(0);
+    }
+
+    /**
+     * Let UI display incoming chat message.
+     *
+     * @param message Incoming chat message.
+     */
+    @Override
+    public void talk(String message) {
+        gameFrame.talk(message);
+    }
+
+    public Communicator getBlackCommunicator() {
+        return communicatorMap.get(MQProtocol.Chess.Color.BLACK);
+    }
+
+    public Communicator getWhiteCommunicator() {
+        return communicatorMap.get(MQProtocol.Chess.Color.WHITE);
+    }
+
+    public Map<MQProtocol.Chess.Color, Communicator> getCommunicatorMap() {
+        return communicatorMap;
+    }
 }

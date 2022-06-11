@@ -5,9 +5,11 @@ import jlu.evyde.gobang.Client.Controller.GobangException;
 import jlu.evyde.gobang.Client.Controller.UIDriver;
 import jlu.evyde.gobang.Client.Controller.UIDriverFactory;
 import jlu.evyde.gobang.Client.Model.*;
+import jlu.evyde.gobang.Client.SwingController.SwingUIDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.net.InetSocketAddress;
 
 import static java.lang.Thread.sleep;
@@ -57,7 +59,7 @@ public class Main {
     }
 
     private static void initLogicServer() {
-        ls = new LogicServer(uid);
+        ls = new LogicServer();
     }
 
     private static class dispose implements Callback {
@@ -82,10 +84,12 @@ public class Main {
                 while (locked) {
                     if (counter-- <= 0) {
                         locked = false;
+                        System.exit(0);
                         sleep(SystemConfiguration.getSleepTime());
                     }
                     Thread.onSpinWait();
                 }
+                System.exit(0);
             } catch (Exception e) {
                 e.printStackTrace();
                 logger.error("Failed to exit, exit anyway.");
@@ -99,17 +103,18 @@ public class Main {
     public static void main(String[] args) {
         logger.info("Starting client.");
 
-        logger.warn("Stage 1: Initialize message queue server.");
+        logger.warn("Stage 1: Initialize main frame.");
+        initMainFrame();
+        logger.warn("Stage 2: Initialize message queue server.");
         initMQServer();
         while (stageLock) {
             Thread.onSpinWait();
         }
-        logger.warn("Stage 2: Initialize logic server.");
+        logger.warn("Stage 3: Initialize logic server.");
         initLogicServer();
-        logger.warn("Stage 3: Initialize UI server.");
+
+        logger.warn("Stage 4: Initialize UI server.");
         initUIServer();
-        logger.warn("Stage 4: Initialize main frame.");
-        initMainFrame();
         logger.warn("Initialized successfully.");
     }
 

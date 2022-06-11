@@ -8,9 +8,7 @@ public abstract class LogicCommunicatorReceiveListener implements CommunicatorRe
     public abstract void beforeReceive();
 
     @Override
-    public void doReceive(MQMessage msg) {
-
-    }
+    public abstract void doReceive(MQMessage msg);
 
     @Override
     public abstract void afterReceive();

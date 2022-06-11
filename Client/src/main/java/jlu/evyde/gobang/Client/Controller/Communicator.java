@@ -1,9 +1,10 @@
 package jlu.evyde.gobang.Client.Controller;
 
-import com.google.gson.Gson;
 import jlu.evyde.gobang.Client.Model.MQMessage;
 import jlu.evyde.gobang.Client.Model.MQProtocol;
 import jlu.evyde.gobang.Client.Model.MQServerAddress;
+
+import java.util.EnumMap;
 
 public interface Communicator {
 
@@ -22,11 +23,11 @@ public interface Communicator {
 
     /**
      * Register this communicator to MQ server.
-     * @param id Message queue source.
+     * @param message Message to register.
      * @param success Callback function when registered successfully.
      * @param failed Callback function when registered failed.
      */
-    void register(MQProtocol.MQSource id, Callback success, Callback failed);
+    void register(MQMessage message, Callback success, Callback failed);
 
     /**
      * Send produce request to MQ server.
@@ -49,9 +50,29 @@ public interface Communicator {
 
     /**
      * Let the specific color of chess to win.
-     * @param color Chess color to win.
+     * @param chess Chess to win.
      */
-    void win(MQProtocol.Chess.Color color);
+    void win(MQProtocol.Chess chess);
+
+    /**
+     * Clear score in server.
+     */
+    void clearScore();
+
+    /**
+     * Let UI update score of gamer.
+     * @param score Score map that should be updated.
+     */
+    void updateScore(EnumMap<MQProtocol.Chess.Color, Integer> score);
+
+    /**
+     * Let logic server send redirect message to MQ server for authentication.
+     * Should be called by Logic Server ONLY.
+     * @param message Message to redirect.
+     * @param sendComplete Callback method when send complete.
+     * @param sendError    Callback method when send error.
+     */
+    void redirect(MQMessage message, Callback sendComplete, Callback sendError);
 
     /**
      * Add receive listener to this communicator.
@@ -59,4 +80,47 @@ public interface Communicator {
      * @param crl CommunicatorReceiveListener class.
      */
     void addReceiveListener(CommunicatorReceiveListener crl);
+
+    /**
+     * Destroy this communicator.
+     */
+    void close();
+
+    /**
+     * Let communicator send only to prevent from multiple win message.
+     * @param sendOnly
+     */
+    void setSendOnly(boolean sendOnly);
+
+    /**
+     * Let communicator read only to prevent from duplicated operation.
+     * @param readOnly
+     */
+    void setReadOnly(boolean readOnly);
+
+    /**
+     * Let this game draw.
+     */
+    void draw();
+
+    /**
+     * Restart this game.
+     */
+    void restartGame();
+
+    /**
+     * Reset all things except for score.
+     */
+    void reset();
+
+    /**
+     * Tell logic server to end game immediately.
+     */
+    void endGame();
+
+    /**
+     * Say something to every one.
+     * @param message Thing to talk.
+     */
+    void talk(String message);
 }

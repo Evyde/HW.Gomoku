@@ -1,19 +1,22 @@
 package jlu.evyde.gobang.Client.Model;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.awt.*;
 import java.io.Serializable;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
 /**
  * Protocol definition class.
  */
-// TODO: Add role (WATCHER, WHITE_PUTTER, BLACK_PUTTER)
 public class MQProtocol {
     private static final ResourceBundle bundle = ResourceBundle.getBundle("MQProtocol");
     public enum Head {
         PRODUCE,
         CONSUME,
         REGISTER,
+        REDIRECT,
         END;
 
         public static String constructRequest(Head mp, MQMessage msg) {
@@ -31,50 +34,74 @@ public class MQProtocol {
     }
 
     public enum Code {
-        UPDATE_TOKEN(100),
-        PUT_CHESS(101),
-        RECALL(102),
-        WHITE_WIN(103),
-        BLACK_WIN(104),
+        UPDATE_TOKEN(100, Privilege.SUPERVISOR),
+        PUT_CHESS(101, Privilege.MACHINE),
+        RECALL(102, Privilege.MACHINE),
+        WHITE_WIN(103, Privilege.SUPERVISOR),
+        BLACK_WIN(104, Privilege.SUPERVISOR),
+        AUTH(105, Privilege.SUPERVISOR),
+        REGISTER_FAILED(106, Privilege.SUPERVISOR),
+        DISCONNECT(107, Privilege.GUEST),
+        UPDATE_SCORE(108, Privilege.SUPERVISOR),
+        CLEAR_SCORE(109, Privilege.MACHINE),
+        DRAW(110, Privilege.SUPERVISOR),
+        RESTART_GAME(111, Privilege.MACHINE),
+        RESET(112, Privilege.SUPERVISOR),
+        END_GAME(113, Privilege.MACHINE),
+        TALK(114, Privilege.USER),
+        NO_OPERATION(0, Privilege.GUEST),
         ;
         private final Integer code;
+        private final Privilege needPrivilege;
 
-        Code(Integer c) {
-            this.code = c;
+        Code(Integer code, Privilege privilege) {
+            this.needPrivilege = privilege;
+            this.code = code;
         }
 
         public Integer getCode() {
             return code;
         }
-    }
+        public static Code fromInteger(Integer code) {
+            if (UPDATE_TOKEN.getCode().equals(code)) {
+                return UPDATE_TOKEN;
+            } else if (PUT_CHESS.getCode().equals(code)) {
+                return PUT_CHESS;
+            } else if (RECALL.getCode().equals(code)) {
+                return RECALL;
+            } else if (WHITE_WIN.getCode().equals(code)) {
+                return WHITE_WIN;
+            } else if (BLACK_WIN.getCode().equals(code)) {
+                return BLACK_WIN;
+            } else if (AUTH.getCode().equals(code)) {
+                return AUTH;
+            } else if (REGISTER_FAILED.getCode().equals(code)) {
+                return REGISTER_FAILED;
+            } else if (DISCONNECT.getCode().equals(code)) {
+                return DISCONNECT;
+            } else if (UPDATE_SCORE.getCode().equals(code)) {
+                return UPDATE_SCORE;
+            } else if (CLEAR_SCORE.getCode().equals(code)) {
+                return CLEAR_SCORE;
+            } else if (DRAW.getCode().equals(code)) {
+                return DRAW;
+            } else if (RESTART_GAME.getCode().equals(code)) {
+                return RESTART_GAME;
+            } else if (RESET.getCode().equals(code)) {
+                return RESET;
+            } else if (END_GAME.getCode().equals(code)) {
+                return END_GAME;
+            } else if (TALK.getCode().equals(code)) {
+                return TALK;
+            } else if (NO_OPERATION.getCode().equals(code)) {
+                return NO_OPERATION;
+            }
+            return NO_OPERATION;
+        }
 
-    public enum MQSource {
-        UI {
-            @Override
-            public boolean canConsume(MQSource ms) {
-                return ms == MQSource.LOGIC || ms == MQSource.UI;
-            }
-        },
-        CLIENT {
-            @Override
-            public boolean canConsume(MQSource ms) {
-                return ms == MQSource.SERVER;
-            }
-        },
-        SERVER {
-            @Override
-            public boolean canConsume(MQSource ms) {
-                return ms == MQSource.CLIENT;
-            }
-        },
-        LOGIC {
-            @Override
-            public boolean canConsume(MQSource ms) {
-                return ms == MQSource.UI;
-            }
-        },
-        ;
-        public abstract boolean canConsume(MQSource ms);
+        public Privilege getPrivilege() {
+            return needPrivilege;
+        }
 
         @Override
         public String toString() {
@@ -87,7 +114,9 @@ public class MQProtocol {
         private final Color color;
 
         public enum Color {
+            @SerializedName("WHITE")
             WHITE,
+            @SerializedName("BLACK")
             BLACK;
 
             @Override
@@ -107,7 +136,7 @@ public class MQProtocol {
 
         @Override
         public String toString() {
-            return color.toString() + " [" + position.getX() + ", " + position.getY() + "]";
+            return color.toString() + ": [" + position.getX() + ", " + position.getY() + "]";
         }
 
         // Below is generated by IntelliJ IDEA
@@ -129,6 +158,95 @@ public class MQProtocol {
 
         public Point getPosition() {
             return position;
+        }
+    }
+
+    public enum Group {
+        GUEST(Privilege.GUEST, 5, UUID.randomUUID()) {
+            @Override
+            public Group[] pushMyMessageTo() {
+                return new Group[0];
+            }
+        },
+        GAMER(Privilege.MACHINE, 2, UUID.nameUUIDFromBytes("GAMER_MACHINE_Evyde".getBytes())) {
+            @Override
+            public Group[] pushMyMessageTo() {
+                return new Group[]{ LOGIC_SERVER };
+            }
+        },
+        WATCHER(Privilege.USER, Integer.MAX_VALUE, UUID.nameUUIDFromBytes("WATHCER_USER_Evyde".getBytes())) {
+            @Override
+            public Group[] pushMyMessageTo() {
+                return new Group[0];
+            }
+        },
+        LOGIC_SERVER(Privilege.SUPERVISOR, 1, UUID.nameUUIDFromBytes("LOGIC_SERVER_SUPERVISOR_Evyde".getBytes())) {
+            @Override
+            public Group[] pushMyMessageTo() {
+                return new Group[]{ GAMER, WATCHER };
+            }
+        };
+
+        private final Privilege privilege;
+        private final Integer capacityLimit;
+        private final UUID token;
+        Group(Privilege privilege, Integer capacityLimit, UUID token) {
+            this.capacityLimit = capacityLimit;
+            this.privilege = privilege;
+            this.token = token;
+        }
+        @Override
+        public String toString() {
+            return bundle.getString(this.name());
+        }
+
+        public Privilege getPrivilege() {
+            return this.privilege;
+        }
+        public UUID getInitializedUUID() { return this.token; }
+
+        public abstract Group[] pushMyMessageTo();
+
+        public boolean hasPrivilegeToDo(Code code) {
+            return Privilege.compareTo(this.getPrivilege(), code.getPrivilege()) >= 0;
+        }
+
+        public Integer getCapacityLimit() {
+            return this.capacityLimit;
+        }
+
+        public static Group[] getAllGroup() {
+            return new Group[] {
+                    GUEST,
+                    GAMER,
+                    WATCHER,
+                    LOGIC_SERVER,
+            };
+        }
+    }
+
+    public enum Privilege {
+        GUEST(0),
+        USER(1),
+        MACHINE(2),
+        SUPERVISOR(3);
+
+        private final Integer code;
+        public static int compareTo(Privilege a, Privilege b) {
+            return a.getCode().compareTo(b.getCode());
+        }
+
+        Privilege(Integer code) {
+            this.code = code;
+        }
+
+        public Integer getCode() {
+            return this.code;
+        }
+
+        @Override
+        public String toString() {
+            return bundle.getString(this.name());
         }
     }
 }
