@@ -5,13 +5,13 @@
     <groupId>jlu.evyde.gobang</groupId>
     <artifactId>gobang</artifactId>
     <packaging>pom</packaging>
-    <version>${revision}</version>
+    <version>${reversion}</version>
     <description>
         See https://github.com/Evyde/hw.gobang/README.md
     </description>
     <properties>
         <!-- Sane default when no revision property is passed in from the command line -->
-        <revision>1.0.0-SNAPSHOT</revision>
+        <reversion>1.0.0-SNAPSHOT</reversion>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>

@@ -1,6 +1,6 @@
 # 五子棋
 
-[![Gobang Test CI](https://github.com/Evyde/hw.gobang/actions/workflows/GobangTestCI.yml/badge.svg)](https://github.com/Evyde/hw.gobang/actions/workflows/GobangTestCI.yml)
+[![Gobang CI](https://github.com/Evyde/hw.gobang/actions/workflows/GobangCI.yml/badge.svg)](https://github.com/Evyde/hw.gobang/actions/workflows/GobangCI.yml)
 
 
 对了，我又来写五子棋了（
