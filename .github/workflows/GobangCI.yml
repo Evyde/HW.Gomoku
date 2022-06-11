@@ -20,4 +20,4 @@ jobs:
       - name: Test with Maven
         run: mvn test
       - name: Build JAR with Maven
-        run: mvn install
+        run: mvn install -Drevision=1.0.0-SNAPSHOT
