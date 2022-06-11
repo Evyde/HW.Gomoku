@@ -10,7 +10,7 @@ public class MQServerAddress {
 
     public MQServerAddress() { this(SystemConfiguration.getMQServerHost(), SystemConfiguration.getMQServerPort()); }
     public MQServerAddress(String host) { this(host, SystemConfiguration.getMQServerPort()); }
-    public MQServerAddress(Integer port) { this("localhost", port); }
+    public MQServerAddress(Integer port) { this(SystemConfiguration.getMQServerHost(), port); }
     public MQServerAddress(String host, Integer port) {
         setUri(URI.create("ws://" + host + ":" + port + "/"));
         setIsa(new InetSocketAddress(host, port));

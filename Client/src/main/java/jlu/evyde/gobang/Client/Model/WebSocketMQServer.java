@@ -105,12 +105,12 @@ public class WebSocketMQServer implements MQBrokerServer {
             return m.toJson();
         }
 
-        @Deprecated
         private static String constructRegisterFailedResponse(String msg) {
             MQMessage m = new MQMessage();
             m.msg = msg;
             m.group = MQProtocol.Group.LOGIC_SERVER;
             m.status = MQProtocol.Status.FAILED;
+            m.code = MQProtocol.Code.REGISTER_FAILED.getCode();
             return m.toJson();
         }
 
@@ -199,9 +199,15 @@ public class WebSocketMQServer implements MQBrokerServer {
             MQMessage incomingMQMessage;
             try {
                 incomingMQMessage = jsonParser.fromJson(message.toString(), MQMessage.class);
-                assert incomingMQMessage != null;
-                assert incomingMQMessage.token != null;
-                assert incomingMQMessage.group != null;
+                if (
+                        incomingMQMessage == null ||
+                                incomingMQMessage.token == null ||
+                                incomingMQMessage.group == null
+                ) {
+                    logger.warn("Invalid json.");
+                    logger.debug(message.toString());
+                    return;
+                }
                 client.setToken(incomingMQMessage.token);
                 client.setGroup(incomingMQMessage.group);
             } catch (Exception e) {
@@ -257,14 +263,17 @@ public class WebSocketMQServer implements MQBrokerServer {
                                 incomingMQMessage.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
                                 incomingMQMessage.token = targetUUID;
                                 incomingMQMessage.msg = "Access approved.";
-                                client.send(incomingMQMessage);
                                 logger.info("Register for {} to Group {} successfully."
                                         , client.getToken()
                                         , incomingMQMessage.group
                                 );
+                                incomingMQMessage.group = MQProtocol.Group.LOGIC_SERVER;
+                                client.send(incomingMQMessage);
+
                                 for (MQMessage m: persistenceMessages) {
                                     client.send(m);
                                 }
+                                clearNormalMessageQueue();
                             } else {
                                 logger.warn("No specified session found, maybe closed.");
                             }
@@ -320,7 +329,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                                 || MQProtocol.Group.GUEST.equals(incomingMQMessage.group)
                 ) {
                     // invalid register message
-                    client.close(constructFailedResponse("Invalid register message."));
+                    client.close(constructRegisterFailedResponse("Invalid register message."));
                     for (MQClient c: clients.get(MQProtocol.Group.GUEST).keySet()) {
                         if (c == null || c.isClosed()) {
                             clients.get(MQProtocol.Group.GUEST).remove(c);
@@ -339,6 +348,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                         incomingMQMessage.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
                         incomingMQMessage.status = MQProtocol.Status.SUCCESS;
                         client.send(incomingMQMessage);
+                        logger.warn("REGISTER for logic server {} approved!", client.getWebSocket().getRemoteSocketAddress());
                         clearRegisterMessageQueue();
                         return;
                     } else if (incomingMQMessage.group == MQProtocol.Group.WATCHER) {
@@ -355,6 +365,18 @@ public class WebSocketMQServer implements MQBrokerServer {
                             client.send(m);
                         }
                         return;
+                    }
+                    // check if this guy try to register twice
+                    for (MQProtocol.Group g: MQProtocol.Group.getAllGroup()) {
+                        for (MQClient c: clients.get(g).keySet()) {
+                            if (client.getWebSocket().equals(c.getWebSocket())) {
+                                logger.warn("Duplicate register message.");
+                                c.send(constructRegisterFailedResponse("Duplicate register message."));
+                                // clients.get(g).remove(c);
+                                autoBroadcast(constructDisconnectMessage(c.getToken(), g));
+                                return;
+                            }
+                        }
                     }
                     // replace token with random token
                     incomingMQMessage.token = UUID.randomUUID();

@@ -8,11 +8,15 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.List;
+
+import static java.lang.Thread.sleep;
 
 public class Utils {
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);
@@ -135,33 +139,52 @@ public class Utils {
     public static class TestWebSocketClient extends WebSocketClient {
         private UUID clientToken;
         private List<MQMessage> receive;
+        private MQProtocol.Group role;
 
-        public TestWebSocketClient(URI serverUri, List<MQMessage> receive) {
+        public TestWebSocketClient(URI serverUri, List<MQMessage> receive, MQProtocol.Group role) {
             super(serverUri);
             this.receive = receive;
+            this.role = role;
         }
 
         @Override
         public void onOpen(ServerHandshake serverHandshake) {
+            if (MQProtocol.Group.GAMER.equals(role)) {
+                MQMessage m = new MQMessage();
+                m.token = MQProtocol.Group.GAMER.getInitializedUUID();
+                m.group = role;
+                m.chess = new MQProtocol.Chess(new Point(), MQProtocol.Chess.Color.WHITE);
+                this.send(MQMessage.constructRegisterMessage(m));
+                try {
+                    sleep(500);
+                } catch (Exception e) {
 
+                }
+                m.chess = new MQProtocol.Chess(new Point(), MQProtocol.Chess.Color.BLACK);
+                this.send(MQMessage.constructRegisterMessage(m));
+            } else {
+                this.send(MQMessage.constructRegisterMessage(role));
+            }
         }
 
         @Override
         public void onMessage(String s) {
-            try {
-                MQMessage m = MQMessage.fromJson(s);
-                if ((clientToken == null || MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code))
-                        && m.group == MQProtocol.Group.LOGIC_SERVER) {
-                    if (m.token != null) {
-                        clientToken = m.token;
-                    } else {
-                        System.err.println("Server returns wrong token!");
-                    }
-                } else {
+            MQMessage m = MQMessage.fromJson(s);
+            if ((clientToken == null && MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code))
+                    && m.group == MQProtocol.Group.LOGIC_SERVER) {
+                if (m.token != null) {
+                    clientToken = m.token;
                     receive.add(m);
+                } else {
+                    System.err.println("Server returns wrong token!");
+                    throw new GobangException.CommunicatorInitFailedException();
                 }
-            } catch (Exception e) {
-
+            } else if (MQProtocol.Code.REGISTER_FAILED.getCode().equals(m.code)) {
+                // do nothing
+            } else if (MQProtocol.Code.NO_OPERATION.getCode().equals(m.code)) {
+                // also do nothing
+            } else {
+                receive.add(m);
             }
         }
 
@@ -180,17 +203,19 @@ public class Utils {
         }
 
         public void send(MQMessage m, MQProtocol.Head p) {
-            m.token = clientToken;
+            if (clientToken != null) {
+                m.token = clientToken;
+            }
             send(MQProtocol.Head.constructRequest(p, m));
         }
     }
 
-    public static TestWebSocketClient createTestClient(int port, List<MQMessage> receive) {
+    public static TestWebSocketClient createTestClient(int port, List<MQMessage> receive, MQProtocol.Group id) {
 
         MQServerAddress msa = new MQServerAddress();
         try {
             msa.setUri(new URI("ws://localhost:" + port + "/"));
-            return new TestWebSocketClient(msa.getUri(), receive) ;
+            return new TestWebSocketClient(msa.getUri(), receive, id);
         } catch (Exception e) {
             return null;
         }

@@ -62,11 +62,15 @@ public class MQMessage implements Serializable {
         MQMessage m = new MQMessage();
         m.group = group;
         m.status = MQProtocol.Status.SUCCESS;
-        m.code = Utils.generateRandomInt(200, 300);
+//        do {
+//            m.code = MQProtocol.Code.values()[Utils.generateRandomInt(0, MQProtocol.Code.values().length - 1)].getCode();
+//        } while (!m.group.hasPrivilegeToDo(MQProtocol.Code.fromInteger(m.code)));
+
+        m.code = MQProtocol.Code.PUT_CHESS.getCode();
         m.chess = new MQProtocol.Chess(
                 new Point(
-                        Utils.generateRandomInt(0, 300),
-                        Utils.generateRandomInt(0, 300)
+                        Utils.generateRandomInt(0, 14),
+                        Utils.generateRandomInt(0, 14)
                 ),
                 color
         );

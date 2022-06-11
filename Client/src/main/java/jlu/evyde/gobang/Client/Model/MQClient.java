@@ -32,7 +32,7 @@ public class MQClient implements Serializable {
             if (this.token != null && ((MQClient) obj).token != null) {
                 return Objects.equals(this.token, ((MQClient) obj).token);
             } else {
-                return Objects.equals(this.webSocket, ((MQClient) obj).webSocket);
+                return Objects.equals(this.getWebSocket(), ((MQClient) obj).getWebSocket());
             }
         } else if (obj instanceof UUID) {
             return Objects.equals(this.token, obj);
