@@ -25,7 +25,10 @@
 
 
 https://user-images.githubusercontent.com/9302540/172889849-01f7e236-21ac-4a06-bfe1-85e3eea3e08f.mp4
-https://github.com/Evyde/hw.gobang/blob/master/medias/Gobang1003.mp4?raw=true
+
+https://user-images.githubusercontent.com/9302540/173047555-e5f513aa-c91e-4c44-b817-ac232c8b0c26.mp4
+
+
 
 
 ## 功能
