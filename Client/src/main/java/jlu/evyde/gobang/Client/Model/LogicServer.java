@@ -1,6 +1,7 @@
 package jlu.evyde.gobang.Client.Model;
 
 import jlu.evyde.gobang.Client.Controller.*;
+import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +21,19 @@ public class LogicServer {
     private Integer chessNums = 0;
     private MQProtocol.Chess.Color nowMove = SystemConfiguration.getFIRST().equals(MQProtocol.Chess.Color.WHITE) ?
             MQProtocol.Chess.Color.WHITE : MQProtocol.Chess.Color.BLACK;
+    private List<MQMessage> received = null;
+
+    @TestOnly
+    public LogicServer(List<MQMessage> received, int port) {
+        this(new MQServerAddress(port));
+        this.received = received;
+    }
 
     public LogicServer() {
+        this(new MQServerAddress());
+    }
+
+    public LogicServer(MQServerAddress address) {
 
         // read from file if score is already exists
         score = Utils.readScoreFromFile(SystemConfiguration.getScoreFileName());
@@ -86,6 +98,11 @@ public class LogicServer {
                             communicator.recall();
                         }
                     }
+                    if (!MQProtocol.Code.UPDATE_TOKEN.getCode().equals(msg.code) && !MQProtocol.Code.AUTH.getCode().equals(msg.code)) {
+                        if (received != null) {
+                            received.add(msg);
+                        }
+                    }
                 }
 
                 @Override
@@ -99,7 +116,7 @@ public class LogicServer {
                     logger.debug("Receive complete.");
                 }
             });
-            communicator.connect(new MQServerAddress());
+            communicator.connect(address);
             Integer counter = SystemConfiguration.getMaxRetryTime();
             while (!communicator.connected()) {
                 if (counter-- <= 0) {
@@ -142,7 +159,7 @@ public class LogicServer {
         msg.msg = msg.token.toString();
         msg.status = MQProtocol.Status.SUCCESS;
         communicator.redirect(msg, () -> {
-            logger.warn("Register for {} to Group {} approved.", msg.msg, msg.group);
+            logger.warn("Register for {} to Group {} with {} approved.", msg.msg, msg.group, msg.chess.getColor());
         }, () -> {
             logger.error("Send auth success message failed.");
         });
@@ -331,5 +348,14 @@ public class LogicServer {
 
     private boolean boardEmpty() {
         return steps.isEmpty();
+    }
+
+    @TestOnly
+    public void send(MQMessage message, MQProtocol.Head head) {
+        if (MQProtocol.Head.PRODUCE.equals(head)) {
+            this.communicator.produce(message, () -> {
+            }, () -> {
+            });
+        }
     }
 }

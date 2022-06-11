@@ -4,7 +4,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.util.Locale;
-import java.util.ResourceBundle;
 import java.util.UUID;
 
 public class SystemConfiguration {
@@ -93,5 +92,9 @@ public class SystemConfiguration {
 
     public static InputStream getWhiteWinnerChess() {
         return SystemConfiguration.class.getResourceAsStream(WHITE_WINNER_CHESS);
+    }
+
+    public static MQProtocol.Chess.Color getNextColor() {
+        return getFIRST() == MQProtocol.Chess.Color.WHITE? MQProtocol.Chess.Color.BLACK: MQProtocol.Chess.Color.WHITE;
     }
 }

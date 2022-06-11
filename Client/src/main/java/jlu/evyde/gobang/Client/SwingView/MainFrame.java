@@ -264,20 +264,20 @@ public class MainFrame extends GameFrame {
         this.add(controlPanel, s);
 
         JButton recallButton = new JButton(bundle.getString("RECALL"));
-        recallButton.addActionListener(e -> communicatorMap.get(MQProtocol.Chess.Color.BLACK).recall());
+        recallButton.addActionListener(e -> communicatorMap.get(SystemConfiguration.getFIRST()).recall());
 
         JButton resetScoreButton = new JButton(bundle.getString("RESET_SCORE"));
-        resetScoreButton.addActionListener(e -> communicatorMap.get(MQProtocol.Chess.Color.BLACK).clearScore());
+        resetScoreButton.addActionListener(e -> communicatorMap.get(SystemConfiguration.getFIRST()).clearScore());
 
         JButton resetGameButton = new JButton(bundle.getString("RESTART_GAME"));
-        resetGameButton.addActionListener(e -> communicatorMap.get(MQProtocol.Chess.Color.BLACK).restartGame());
+        resetGameButton.addActionListener(e -> communicatorMap.get(SystemConfiguration.getFIRST()).restartGame());
 
         JButton endGameButton = new JButton(bundle.getString("END_GAME"));
-        endGameButton.addActionListener(e -> communicatorMap.get(MQProtocol.Chess.Color.BLACK).endGame());
+        endGameButton.addActionListener(e -> communicatorMap.get(SystemConfiguration.getFIRST()).endGame());
 
         JButton exitGameButton = new JButton(bundle.getString("EXIT_GAME"));
         exitGameButton.addActionListener(e -> {
-            communicatorMap.get(MQProtocol.Chess.Color.BLACK).endGame();
+            communicatorMap.get(SystemConfiguration.getFIRST()).endGame();
             dispose();
         });
 
@@ -788,9 +788,9 @@ public class MainFrame extends GameFrame {
         winningChess = null;
         nowPlayer = SystemConfiguration.getFIRST();
         setNowPlayLock(false);
-        communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
-        communicatorMap.get(MQProtocol.Chess.Color.WHITE).setReadOnly(false);
-        communicatorMap.get(MQProtocol.Chess.Color.BLACK).setReadOnly(false);
+        //communicatorMap.get(SystemConfiguration.getFIRST()).setSendOnly(true);
+        //communicatorMap.get(SystemConfiguration.getFIRST()).setReadOnly(false);
+        //communicatorMap.get(SystemConfiguration.getNextColor()).setReadOnly(false);
     }
 
     private Point getVirtualOrigin() {
@@ -863,15 +863,15 @@ public class MainFrame extends GameFrame {
 
         if (choice.equals(JOptionPane.CANCEL_OPTION)) {
             // do nothing and do not exit game
-            communicatorMap.get(MQProtocol.Chess.Color.WHITE).setReadOnly(true);
-            communicatorMap.get(MQProtocol.Chess.Color.BLACK).setReadOnly(true);
+            communicatorMap.get(SystemConfiguration.getFIRST()).setReadOnly(true);
+            communicatorMap.get(SystemConfiguration.getNextColor()).setReadOnly(true);
         } else if (choice.equals(JOptionPane.NO_OPTION)) {
             // exit game
             dispose();
         } else {
             // start next game
-            communicatorMap.get(MQProtocol.Chess.Color.WHITE).restartGame();
-            communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
+            communicatorMap.get(SystemConfiguration.getFIRST()).restartGame();
+            communicatorMap.get(SystemConfiguration.getFIRST()).setSendOnly(true);
             setNowPlayLock(false);
         }
     }

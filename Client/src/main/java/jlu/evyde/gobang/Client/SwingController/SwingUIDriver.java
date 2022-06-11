@@ -123,10 +123,9 @@ public class SwingUIDriver implements UIDriver {
     public void initCommunicator(Callback complete) throws GobangException.CommunicatorInitFailedException {
         this.communicatorMap.put(MQProtocol.Chess.Color.WHITE, initColoredCommunicator(MQProtocol.Chess.Color.WHITE,
                 complete));
-        this.communicatorMap.put(MQProtocol.Chess.Color.BLACK, initColoredCommunicator(MQProtocol.Chess.Color.BLACK,
-                complete));
+        this.communicatorMap.put(MQProtocol.Chess.Color.BLACK, CommunicatorFactory.getWebSocketCommunicator());
         // let one of communicator to be sent only because it may cause win twice
-        this.communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(true);
+        // this.communicatorMap.get(MQProtocol.Chess.Color.WHITE).setSendOnly(false);
 
     }
 

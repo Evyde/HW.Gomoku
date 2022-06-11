@@ -1,9 +1,6 @@
 package jlu.evyde.gobang.Client;
 
-import jlu.evyde.gobang.Client.Controller.Callback;
-import jlu.evyde.gobang.Client.Controller.GobangException;
-import jlu.evyde.gobang.Client.Controller.UIDriver;
-import jlu.evyde.gobang.Client.Controller.UIDriverFactory;
+import jlu.evyde.gobang.Client.Controller.*;
 import jlu.evyde.gobang.Client.Model.*;
 import jlu.evyde.gobang.Client.SwingController.SwingUIDriver;
 import org.slf4j.Logger;
@@ -115,7 +112,30 @@ public class Main {
 
         logger.warn("Stage 4: Initialize UI server.");
         initUIServer();
+        
+        logger.warn("Stage 5: Initialize AI client.");
+//        initAIClient(MQProtocol.Chess.Color.WHITE);
+//        try {
+//            sleep(5000);
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+        initAIClient(MQProtocol.Chess.Color.BLACK);
         logger.warn("Initialized successfully.");
+    }
+
+    private static void initAIClient(MQProtocol.Chess.Color color) {
+        UIDriver ai = UIDriverFactory.getAIDriver(color);
+        ai.initMainFrame(() -> {}, () -> {});
+        ai.initCommunicator(() -> {logger.warn("AI started.");});
+        if (color.equals(SystemConfiguration.getFIRST())) {
+            try {
+                sleep(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            ai.put(new MQProtocol.Chess(new Point(), color));
+        }
     }
 
     private static void initUIServer() {
