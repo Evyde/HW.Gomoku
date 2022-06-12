@@ -42,6 +42,7 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
 
                 <plugin>
                     <groupId>com.ragedunicorn.tools.maven</groupId>
@@ -61,8 +62,6 @@
                         </execution>
                     </executions>
                 </plugin>
-
-            </plugin>
         </plugins>
     </build>
 
