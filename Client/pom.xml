@@ -43,6 +43,25 @@
                     </execution>
                 </executions>
 
+                <plugin>
+                    <groupId>com.ragedunicorn.tools.maven</groupId>
+                    <artifactId>github-release-maven-plugin</artifactId>
+                    <version>[version]</version>
+                    <executions>
+                        <execution>
+                            <id>default-cli</id>
+                            <configuration>
+                                <owner>Evyde</owner>
+                                <repository>hw.gobang</repository>
+                                <server>github-oauth</server>
+                                <tagName>v0.0.1</tagName>
+                                <targetCommitish>master</targetCommitish>
+                                <authToken>${github.auth-token}</authToken>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
             </plugin>
         </plugins>
     </build>
@@ -133,11 +152,4 @@
 
     </dependencies>
 
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/Evyde/hw.gobang</url>
-        </repository>
-    </distributionManagement>
 </project>
