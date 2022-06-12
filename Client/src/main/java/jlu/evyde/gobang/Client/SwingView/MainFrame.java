@@ -872,9 +872,10 @@ public class MainFrame extends GameFrame {
             dispose();
         } else {
             // start next game
-            communicatorMap.get(SystemConfiguration.getFIRST()).restartGame();
-            communicatorMap.get(SystemConfiguration.getFIRST()).setSendOnly(true);
             setNowPlayLock(false);
+            communicatorMap.get(SystemConfiguration.getFIRST()).restartGame();
+            // communicatorMap.get(SystemConfiguration.getFIRST()).setSendOnly(true);
+
         }
     }
 

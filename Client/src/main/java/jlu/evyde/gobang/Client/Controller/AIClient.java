@@ -167,6 +167,7 @@ public class AIClient implements UIDriver {
     public void reset() {
         steps.clear();
         board = new MQProtocol.Chess.Color[SystemConfiguration.getBoardHeight()][SystemConfiguration.getBoardWidth()];
+        aiCommunicator.setReadOnly(false);
     }
 
     /**
