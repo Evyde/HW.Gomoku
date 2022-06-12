@@ -82,6 +82,13 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.ragedunicorn.tools.maven</groupId>
+            <artifactId>github-release-maven-plugin</artifactId>
+            <version>1.0.4</version>
+            <type>maven-plugin</type>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>RELEASE</version>

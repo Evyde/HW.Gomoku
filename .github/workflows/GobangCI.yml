@@ -20,6 +20,6 @@ jobs:
       - name: Test with Maven
         run: mvn test
       - name: Build JAR with Maven
-        run: mvn install -Dreversion=0.0.1
+        run: mvn install -D reversion=0.0.1
       - name: Publish package
-        run: mvn github-release:github-release -D github.auth-token=${{ secrets.TOKEN }} -Dreversion=0.0.1
+        run: mvn github-release:github-release -D github.auth-token=${{ secrets.TOKEN }} -D reversion=0.0.1
