@@ -383,8 +383,9 @@ public class WebSocketCommunicator implements Communicator {
                 logger.warn("Received invalid message {}.", s);
                 return;
             }
-            assert m != null;
-            // TODO: Return register failed message.
+            if (m == null) {
+                throw new NullPointerException();
+            }
             if (MQProtocol.Code.UPDATE_TOKEN.getCode().equals(m.code)) {
                 if (m.token != null) {
                     communicatorToken = m.token;
@@ -394,6 +395,8 @@ public class WebSocketCommunicator implements Communicator {
                 } else {
                     System.err.println("Server returns wrong token!");
                 }
+            } else if (MQProtocol.Code.REGISTER_FAILED.getCode().equals(m.code)) {
+                throw new GobangException.CommunicatorInitFailedException();
             } else {
                 if (!sendOnly) {
                     listener.doReceive(m);
@@ -409,6 +412,7 @@ public class WebSocketCommunicator implements Communicator {
             /* register(registerMessage, () -> { logger.warn("Re-register success."); }, () -> {
                 logger.warn("Re-register error.");
             }); */
+            onMessage(s);
         }
 
         @Override
