@@ -58,6 +58,14 @@
                                 <tagName>v0.0.1</tagName>
                                 <targetCommitish>master</targetCommitish>
                                 <authToken>${github.auth-token}</authToken>
+                                <assets>
+                                    <asset>
+                                        /home/runner/work/hw.gobang/hw.gobang/Client/target/Client-${reversion}.jar
+                                    </asset>
+                                    <asset>
+                                        /home/runner/work/hw.gobang/hw.gobang/Client/target/Client-${reversion}-jar-with-dependencies.jar
+                                    </asset>
+                                </assets>
                             </configuration>
                         </execution>
                     </executions>
