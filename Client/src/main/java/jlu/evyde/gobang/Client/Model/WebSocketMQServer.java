@@ -141,10 +141,16 @@ public class WebSocketMQServer implements MQBrokerServer {
             broadcastLock.lock();
             for (MQProtocol.Group g: m.group.pushMyMessageTo()) {
                 for (MQClient client: clients.get(g).keySet()) {
-                    if (client.send(m)) {
-                        broadcastStatus = true;
-                    } else {
-                        clients.get(g).remove(client);
+                    if (!client.isClosed()) {
+                        try {
+                            if (client.send(m)) {
+                                broadcastStatus = true;
+                            } else {
+                                clients.get(g).remove(client);
+                            }
+                        } catch (Exception e) {
+                            logger.warn("Try send to {} raise error.", client.getWebSocket().getLocalSocketAddress());
+                        }
                     }
                 }
             }
