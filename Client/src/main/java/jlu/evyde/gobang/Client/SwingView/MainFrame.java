@@ -46,6 +46,7 @@ public class MainFrame extends GameFrame {
     private MQProtocol.Chess winningChess = null;
     private JLabel blackScore;
     private JLabel whiteScore;
+    public JPanel controlButtonPanel;
 
     public MainFrame(Callback disposeListener, Map<MQProtocol.Chess.Color, Communicator> uiCommunicatorMap) {
         super(uiCommunicatorMap);
@@ -288,7 +289,7 @@ public class MainFrame extends GameFrame {
         buttonList.add(resetGameButton);
         buttonList.add(endGameButton);
         buttonList.add(exitGameButton);
-        JPanel controlButtonPanel = new JPanel(new GridBagLayout()) {
+        controlButtonPanel = new JPanel(new GridBagLayout()) {
             private Dimension size;
             private final Integer buttons = buttonList.size();
             private final Integer rows = 2;
@@ -310,8 +311,8 @@ public class MainFrame extends GameFrame {
                         s.weightx = 1;
                         s.weighty = 1;
                         s.fill = GridBagConstraints.BOTH;
-                        setPreferredSize(new Dimension(2, 2));
-                        button.setPreferredSize(new Dimension(2, 2));
+                        //setPreferredSize(new Dimension(2, 2));
+                        //button.setPreferredSize(new Dimension(2, 2));
                         button.setEnabled(true);
                         this.add(button, s);
                         i++;
@@ -338,8 +339,8 @@ public class MainFrame extends GameFrame {
             s.weightx = 1;
             s.weighty = 1;
             s.fill = GridBagConstraints.BOTH;
-            setPreferredSize(new Dimension(2, 2));
-            b.setPreferredSize(new Dimension(2, 2));
+            // setPreferredSize(new Dimension(2, 2));
+            // b.setPreferredSize(new Dimension(2, 2));
             b.setEnabled(true);
             controlButtonPanel.add(b, s);
         }
@@ -680,8 +681,9 @@ public class MainFrame extends GameFrame {
         scorePanel.setPreferredSize(new Dimension(2, 2));
         nowPlayerPanel.setPreferredSize(new Dimension(2, 2));
         this.setPreferredSize(new Dimension(2, 2));
-        this.pack();
         controlButtonPanel.repaint();
+        this.pack();
+
     }
 
     private MQProtocol.Chess.Color getChessAt(int x, int y) {

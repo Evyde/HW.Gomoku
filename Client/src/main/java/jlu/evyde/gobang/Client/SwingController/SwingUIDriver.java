@@ -109,6 +109,7 @@ public class SwingUIDriver implements UIDriver {
 
         // SwingUtilities.updateComponentTreeUI(mainFrame);
         gameFrame.setVisible(true);
+        ((MainFrame) gameFrame).controlButtonPanel.repaint();
         // don't forget to callback
         complete.run();
     }
