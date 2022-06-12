@@ -34,7 +34,7 @@ public class GUIPrintStream extends PrintStream {
     public GUIPrintStream(OutputStream out, JTextPane component) {
         super(out);
         float[] hsbCC = new float[3];
-        if (out == System.err) {
+        if (out.equals(System.err)) {
             Color.RGBtoHSB(255, 85, 84, hsbCC);
         } else {
             Color.RGBtoHSB(47, 200, 100, hsbCC);
