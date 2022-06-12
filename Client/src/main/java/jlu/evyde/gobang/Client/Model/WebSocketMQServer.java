@@ -9,15 +9,15 @@ import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Deque;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.Thread.sleep;
 
-// TODO: Fix cannot remove from Guest error.
 public class WebSocketMQServer implements MQBrokerServer {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private WebSocketServer wss;
@@ -80,7 +80,7 @@ public class WebSocketMQServer implements MQBrokerServer {
         public RealWebSocketMQServer(MQServerAddress msa, Callback startComplete) {
             super(msa.getIsa());
             this.startComplete = startComplete;
-            for (MQProtocol.Group g: MQProtocol.Group.getAllGroup()) {
+            for (MQProtocol.Group g : MQProtocol.Group.getAllGroup()) {
                 clients.put(g, new ConcurrentHashMap<>());
             }
         }
@@ -139,8 +139,8 @@ public class WebSocketMQServer implements MQBrokerServer {
             }
             logger.info("Broadcast to all available consumers.");
             broadcastLock.lock();
-            for (MQProtocol.Group g: m.group.pushMyMessageTo()) {
-                for (MQClient client: clients.get(g).keySet()) {
+            for (MQProtocol.Group g : m.group.pushMyMessageTo()) {
+                for (MQClient client : clients.get(g).keySet()) {
                     if (!client.isClosed()) {
                         try {
                             if (client.send(m)) {
@@ -171,8 +171,8 @@ public class WebSocketMQServer implements MQBrokerServer {
         @Override
         public void onClose(WebSocket webSocket, int i, String s, boolean b) {
             logger.info("Websocket connection closed: {}", webSocket.getRemoteSocketAddress());
-            for (MQProtocol.Group group: MQProtocol.Group.getAllGroup()) {
-                for (MQClient c: clients.get(group).keySet()) {
+            for (MQProtocol.Group group : MQProtocol.Group.getAllGroup()) {
+                for (MQClient c : clients.get(group).keySet()) {
                     if (webSocket.equals(c.getWebSocket())) {
                         autoBroadcast(constructDisconnectMessage(c.getToken(), c.getGroup()));
                         clients.get(group).remove(c);
@@ -241,7 +241,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                                     incomingMQMessage.code = MQProtocol.Code.REGISTER_FAILED.getCode();
                                     incomingMQMessage.msg = "Register failed.";
 
-                                    for (MQClient c: clients.get(MQProtocol.Group.GUEST).keySet()) {
+                                    for (MQClient c : clients.get(MQProtocol.Group.GUEST).keySet()) {
                                         if (client.equals(c)) {
                                             c.send(incomingMQMessage);
                                             clients.get(MQProtocol.Group.GUEST).remove(c);
@@ -256,7 +256,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                             client.setToken(targetUUID);
                             if (clients.get(MQProtocol.Group.GUEST).containsKey(client)) {
                                 // move client from guest group to requested group
-                                for (MQClient c: clients.get(MQProtocol.Group.GUEST).keySet()) {
+                                for (MQClient c : clients.get(MQProtocol.Group.GUEST).keySet()) {
                                     if (client.equals(c)) {
                                         client.setWebSocket(c.getWebSocket());
                                     }
@@ -276,7 +276,7 @@ public class WebSocketMQServer implements MQBrokerServer {
                                 incomingMQMessage.group = MQProtocol.Group.LOGIC_SERVER;
                                 client.send(incomingMQMessage);
 
-                                for (MQMessage m: persistenceMessages) {
+                                for (MQMessage m : persistenceMessages) {
                                     client.send(m);
                                 }
                                 clearNormalMessageQueue();
@@ -327,16 +327,16 @@ public class WebSocketMQServer implements MQBrokerServer {
                 if (
                         !incomingMQMessage.group.getInitializedUUID().equals(incomingMQMessage.token)
                                 || (
-                                        MQProtocol.Group.LOGIC_SERVER.equals(incomingMQMessage.group)
+                                MQProtocol.Group.LOGIC_SERVER.equals(incomingMQMessage.group)
                                         && clients.get(MQProtocol.Group.LOGIC_SERVER).size() >=
                                         MQProtocol.Group.LOGIC_SERVER.getCapacityLimit() && !allLogicServerDown()
-                                    )
+                        )
                                 || clients.get(incomingMQMessage.group).size() >= incomingMQMessage.group.getCapacityLimit()
                                 || MQProtocol.Group.GUEST.equals(incomingMQMessage.group)
                 ) {
                     // invalid register message
                     client.close(constructRegisterFailedResponse("Invalid register message."));
-                    for (MQClient c: clients.get(MQProtocol.Group.GUEST).keySet()) {
+                    for (MQClient c : clients.get(MQProtocol.Group.GUEST).keySet()) {
                         if (c == null || c.isClosed()) {
                             clients.get(MQProtocol.Group.GUEST).remove(c);
                         }
@@ -367,14 +367,14 @@ public class WebSocketMQServer implements MQBrokerServer {
                         incomingMQMessage.code = MQProtocol.Code.UPDATE_TOKEN.getCode();
                         incomingMQMessage.status = MQProtocol.Status.SUCCESS;
                         client.send(incomingMQMessage);
-                        for (MQMessage m: persistenceMessages) {
+                        for (MQMessage m : persistenceMessages) {
                             client.send(m);
                         }
                         return;
                     }
                     // check if this guy try to register twice
-                    for (MQProtocol.Group g: MQProtocol.Group.getAllGroup()) {
-                        for (MQClient c: clients.get(g).keySet()) {
+                    for (MQProtocol.Group g : MQProtocol.Group.getAllGroup()) {
+                        for (MQClient c : clients.get(g).keySet()) {
                             if (client.getWebSocket().equals(c.getWebSocket())) {
                                 logger.warn("Duplicate register message.");
                                 c.send(constructRegisterFailedResponse("Duplicate register message."));
@@ -410,7 +410,7 @@ public class WebSocketMQServer implements MQBrokerServer {
         }
 
         private boolean allLogicServerDown() {
-            for (MQClient w: clients.get(MQProtocol.Group.LOGIC_SERVER).keySet()) {
+            for (MQClient w : clients.get(MQProtocol.Group.LOGIC_SERVER).keySet()) {
                 if (w != null && !w.isClosed()) {
                     return false;
                 } else {
@@ -454,7 +454,7 @@ public class WebSocketMQServer implements MQBrokerServer {
         private void clearRegisterMessageQueue() {
             if (!allLogicServerDown() && !authMessages.isEmpty()) {
                 logger.debug("Clearing register queue.");
-                while (!authMessages.isEmpty() && autoBroadcast(authMessages.peekFirst()));
+                while (!authMessages.isEmpty() && autoBroadcast(authMessages.peekFirst())) ;
             }
         }
     }
