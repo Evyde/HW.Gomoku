@@ -20,4 +20,8 @@ jobs:
       - name: Test with Maven
         run: mvn test
       - name: Build JAR with Maven
-        run: mvn install -Dreversion=1.0.0-SNAPSHOT
+        run: mvn install -Dreversion=1.0.0
+      - name: Publish package
+          run: mvn --batch-mode deploy -Dreversion=1.0.0
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
