@@ -23,6 +23,7 @@ public class Main {
             uid.initMainFrame(
                     () -> {
                         logger.info("MainFrame started.");
+                        stageLock = false;
                     },
                     new dispose()
             );
@@ -100,8 +101,7 @@ public class Main {
     public static void main(String[] args) {
         logger.info("Starting client.");
 
-        logger.warn("Stage 1: Initialize main frame.");
-        initMainFrame();
+
         logger.warn("Stage 2: Initialize message queue server.");
         initMQServer();
         while (stageLock) {
@@ -121,6 +121,11 @@ public class Main {
 //            throw new RuntimeException(e);
 //        }
         initAIClient(MQProtocol.Chess.Color.BLACK);
+        logger.warn("Stage 1: Initialize main frame.");
+        initMainFrame();
+        while (stageLock) {
+            Thread.onSpinWait();
+        }
         logger.warn("Initialized successfully.");
     }
 
